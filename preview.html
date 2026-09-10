@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GD College Wase — Launching Soon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky: #38BDF8;
+    --sky-dark: #0369A1;
+    --sky-light: #E0F2FE;
+    --bg: #F8FAFC;
+    --text: #0F172A;
+    --muted: #64748B;
+    --border: #E2E8F0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .wash {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 420px;
+    background: radial-gradient(120% 100% at 50% -20%, var(--sky-light) 0%, rgba(224,242,254,0) 70%);
+    pointer-events: none;
+  }
+  main {
+    position: relative;
+    max-width: 720px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 4rem 1.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  svg.seal { width: 92px; height: 92px; }
+  .eyebrow {
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--sky-dark);
+  }
+  h1 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500;
+    font-size: 2.5rem;
+    line-height: 1.15;
+    margin: 1rem 0 0;
+    max-width: 20ch;
+  }
+  .intro {
+    margin: 1.25rem 0 0;
+    max-width: 34rem;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+  .countdown {
+    margin-top: 3rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    width: 100%;
+    max-width: 26rem;
+  }
+  .unit { display: flex; flex-direction: column; align-items: center; }
+  .unit-box {
+    width: 100%;
+    height: 5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .unit-box.first { box-shadow: inset 0 0 0 1px var(--sky); }
+  .unit-box span {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2.1rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .unit-label { margin-top: 0.5rem; font-size: 0.8125rem; color: var(--muted); }
+  .launch-msg {
+    margin-top: 2.5rem;
+    max-width: 26rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .cta {
+    margin-top: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: var(--sky);
+    color: var(--text);
+    padding: 0.75rem 1.75rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .cta:hover { background: var(--sky-dark); color: #fff; }
+  footer {
+    margin-top: auto;
+    padding-top: 4rem;
+    width: 100%;
+  }
+  .rule { width: 64px; height: 1px; background: var(--border); margin: 0 auto; }
+  footer p { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--muted); }
+  @media (max-width: 420px) {
+    h1 { font-size: 2rem; }
+    .unit-box { height: 4rem; }
+    .unit-box span { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wash" aria-hidden="true"></div>
+<main>
+  <svg class="seal" viewBox="0 0 120 120" role="img" aria-label="GD College Wase emblem placeholder">
+    <circle cx="60" cy="60" r="58" fill="none" stroke="#0369A1" stroke-width="2"/>
+    <circle cx="60" cy="60" r="49" fill="none" stroke="#38BDF8" stroke-width="1.5"/>
+    <path d="M60 34 L74 70 L46 70 Z" fill="none" stroke="#0369A1" stroke-width="2.5" stroke-linejoin="round"/>
+    <line x1="60" y1="70" x2="60" y2="86" stroke="#0369A1" stroke-width="2.5"/>
+    <circle cx="60" cy="60" r="3" fill="#38BDF8"/>
+  </svg>
+
+  <p class="eyebrow">Goran Dutse College of General Studies Wase</p>
+
+  <div id="notComplete">
+    <h1>Our new platform is almost here.</h1>
+    <p class="intro">We're building a complete digital home for admissions, academics, and student life at Goran Dutse College of General Studies Wase — so every stage of your journey, from application to graduation, happens in one place.</p>
+
+    <div class="countdown" role="timer" aria-live="polite" aria-atomic="true">
+      <div class="unit"><div class="unit-box first"><span id="d">00</span></div><span class="unit-label">Days</span></div>
+      <div class="unit"><div class="unit-box"><span id="h">00</span></div><span class="unit-label">Hours</span></div>
+      <div class="unit"><div class="unit-box"><span id="m">00</span></div><span class="unit-label">Minutes</span></div>
+      <div class="unit"><div class="unit-box"><span id="s">00</span></div><span class="unit-label">Seconds</span></div>
+    </div>
+
+    <p class="launch-msg">Admissions open when the countdown ends. Check back soon, or leave your details below and we'll let you know first.</p>
+  </div>
+
+  <div id="complete" style="display:none;">
+    <h1 id="completeHeadline">Applications are now open.</h1>
+    <p class="intro">The full platform has launched. Continue to the website to begin your application.</p>
+    <a class="cta" href="#">Begin your application</a>
+  </div>
+
+  <footer>
+    <div class="rule"></div>
+    <p>&copy; <span id="year"></span> GD College Wase. All rights reserved.</p>
+  </footer>
+</main>
+
+<script>
+  // SINGLE CONFIGURABLE LOCATION for the target date, mirroring
+  // config/countdown.config.ts in the Next.js version.
+  const TARGET_DATE = "2026-10-10T00:00:00+01:00";
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  function tick() {
+    const diff = new Date(TARGET_DATE).getTime() - Date.now();
+    if (diff <= 0) {
+      document.getElementById('notComplete').style.display = 'none';
+      document.getElementById('complete').style.display = 'block';
+      clearInterval(interval);
+      return;
+    }
+    const totalSeconds = Math.floor(diff / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    document.getElementById('d').textContent = String(days).padStart(2, '0');
+    document.getElementById('h').textContent = String(hours).padStart(2, '0');
+    document.getElementById('m').textContent = String(minutes).padStart(2, '0');
+    document.getElementById('s').textContent = String(seconds).padStart(2, '0');
+  }
+  tick();
+  const interval = setInterval(tick, 1000);
+</script>
+</body>
+</html>
