@@ -34,9 +34,9 @@
     background: radial-gradient(120% 100% at 50% -20%, var(--sky-light) 0%, rgba(224,242,254,0) 70%);
     pointer-events: none;
   }
-  .layout {
+  main {
     position: relative;
-    max-width: 1120px;
+    max-width: 720px;
     margin: 0 auto;
     min-height: 100vh;
     padding: 4rem 1.5rem 3rem;
@@ -44,10 +44,10 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 3rem;
   }
-  .content { display: flex; flex-direction: column; align-items: center; }
+  .seal { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; }
   .eyebrow {
+    margin-top: 1.5rem;
     font-size: 0.875rem;
     font-weight: 500;
     letter-spacing: 0.01em;
@@ -60,14 +60,14 @@
     color: var(--muted);
   }
   .banner-notice {
-    max-width: 360px;
+    margin-top: 3.5rem;
+    max-width: 320px;
     width: 100%;
     border: 1px solid var(--border);
     border-radius: 10px;
     overflow: hidden;
     background: #fff;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    flex-shrink: 0;
   }
   .banner-notice img { display: block; width: 100%; }
   h1 {
@@ -134,26 +134,12 @@
   }
   .cta:hover { background: var(--sky-dark); color: #fff; }
   footer {
-    margin-top: 3rem;
+    margin-top: auto;
+    padding-top: 4rem;
     width: 100%;
   }
   .rule { width: 64px; height: 1px; background: var(--border); margin: 0 auto; }
   footer p { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--muted); }
-
-  /* Desktop: text on the left, banner on the right */
-  @media (min-width: 900px) {
-    .layout {
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      gap: 4.5rem;
-      text-align: left;
-    }
-    .content { align-items: flex-start; order: 1; }
-    .banner-notice { order: 2; max-width: 400px; }
-    .rule { margin: 0; }
-  }
-
   @media (max-width: 420px) {
     h1 { font-size: 2rem; }
     .unit-box { height: 4rem; }
@@ -163,42 +149,42 @@
 </head>
 <body>
 <div class="wash" aria-hidden="true"></div>
-<div class="layout">
-  <div class="content">
-    <p class="eyebrow">Goran Dutse College of General Studies Wase</p>
-    <p class="motto">&ldquo;Knowledge for Development&rdquo;</p>
+<main>
+  <img class="seal" src="images/gdcollege-crest.png" alt="GD College Wase crest" />
 
-    <div id="notComplete">
-      <h1>Our new platform is almost here.</h1>
-      <p class="intro">We're building a complete digital home for admissions, academics, and student life at Goran Dutse College of General Studies Wase — so every stage of your journey, from application to graduation, happens in one place.</p>
+  <p class="eyebrow">Goran Dutse College of General Studies Wase</p>
+  <p class="motto">&ldquo;Knowledge for Development&rdquo;</p>
 
-      <div class="countdown" role="timer" aria-live="polite" aria-atomic="true">
-        <div class="unit"><div class="unit-box first"><span id="d">00</span></div><span class="unit-label">Days</span></div>
-        <div class="unit"><div class="unit-box"><span id="h">00</span></div><span class="unit-label">Hours</span></div>
-        <div class="unit"><div class="unit-box"><span id="m">00</span></div><span class="unit-label">Minutes</span></div>
-        <div class="unit"><div class="unit-box"><span id="s">00</span></div><span class="unit-label">Seconds</span></div>
-      </div>
+  <div id="notComplete">
+    <h1>Our new platform is almost here.</h1>
+    <p class="intro">We're building a complete digital home for admissions, academics, and student life at Goran Dutse College of General Studies Wase — so every stage of your journey, from application to graduation, happens in one place.</p>
 
-      <p class="launch-msg">Admissions open when the countdown ends. Check back soon, or leave your details below and we'll let you know first.</p>
+    <div class="countdown" role="timer" aria-live="polite" aria-atomic="true">
+      <div class="unit"><div class="unit-box first"><span id="d">00</span></div><span class="unit-label">Days</span></div>
+      <div class="unit"><div class="unit-box"><span id="h">00</span></div><span class="unit-label">Hours</span></div>
+      <div class="unit"><div class="unit-box"><span id="m">00</span></div><span class="unit-label">Minutes</span></div>
+      <div class="unit"><div class="unit-box"><span id="s">00</span></div><span class="unit-label">Seconds</span></div>
     </div>
 
-    <div id="complete" style="display:none;">
-      <h1 id="completeHeadline">Applications are now open.</h1>
-      <p class="intro">The full platform has launched. Continue to the website to begin your application.</p>
-      <a class="cta" href="#">Begin your application</a>
-    </div>
+    <p class="launch-msg">Admissions open when the countdown ends. Check back soon, or leave your details below and we'll let you know first.</p>
+  </div>
 
-    <footer>
-      <div class="rule"></div>
-      <p>08034592011, 07089154460 &middot; No. 13B Along Dengi Road, Wase, Plateau State</p>
-      <p>&copy; <span id="year"></span> GD College Wase. All rights reserved.</p>
-    </footer>
+  <div id="complete" style="display:none;">
+    <h1 id="completeHeadline">Applications are now open.</h1>
+    <p class="intro">The full platform has launched. Continue to the website to begin your application.</p>
+    <a class="cta" href="#">Begin your application</a>
   </div>
 
   <div class="banner-notice">
     <img src="images/gdcollege-banner.jpg" alt="Goran Dutse College of General Studies Wase — official 2026/2027 admission notice" />
   </div>
-</div>
+
+  <footer>
+    <div class="rule"></div>
+    <p>08034592011, 07089154460 &middot; No. 13B Along Dengi Road, Wase, Plateau State</p>
+    <p>&copy; <span id="year"></span> GD College Wase. All rights reserved.</p>
+  </footer>
+</main>
 
 <script>
   // SINGLE CONFIGURABLE LOCATION for the target date, mirroring

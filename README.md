@@ -52,16 +52,25 @@ itself swaps to a "Applications are now open" state with a link into
 `/admissions` — useful as a soft landing even before you've flipped the env
 var server-side.
 
-## Banner image
+## Banner image — supplied 2026-09-09
 
-`countdownConfig.bannerImageSrc` is `null` until the College supplies an
-official banner/crest. Until then, `CountdownPage` renders a simple drawn
-emblem (`<Seal />`) — not a fabricated photo or logo. When the real asset
-arrives, wire it into `CountdownPage` in place of `<Seal />`; no other file
+The official banner (`images/gdcollege-banner.jpg` / `public/images/gdcollege-banner.jpg`
+in the Next.js version) has been received and is wired in:
+
+- `countdownConfig.crestImageSrc` — a circular crop of the crest from the
+  banner's top-left corner, used in the page header in place of the drawn
+  `<Seal />` placeholder.
+- `countdownConfig.bannerImageSrc` — the full banner, shown as a framed
+  "official notice" card near the bottom of the page, since it carries the
+  College's own current 2026/2027 admission messaging.
+
+If a cleaner, higher-resolution, or cropped version of either asset is
+supplied later, just replace the files at those paths — no component code
 needs to change.
 
 ## Contact info
 
-`countdownConfig.contact` is intentionally blank (`null` for each field).
-Fill in real values only once the College has officially supplied them —
-never invent a phone number, email, or address.
+`countdownConfig.contact` and `countdownConfig.motto` are now populated with
+the phone numbers, address, and motto printed on the official banner above.
+Update these only from another officially supplied source — never invent a
+phone number, email, or address that isn't on record.

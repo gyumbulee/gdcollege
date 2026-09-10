@@ -31,8 +31,9 @@ export interface CountdownConfig {
     completedMessage: string;
   };
   /**
-   * Contact info is intentionally left blank until the College supplies it.
-   * Do not invent phone numbers, emails, or addresses — see project rule
+   * Contact info, sourced directly from the official college banner supplied
+   * 2026-09-09 (IMG-20260909-WA0013.jpg). Do not edit these to values that
+   * aren't printed on an official, supplied asset — see project rule
    * "Do not hardcode institutional contact information."
    */
   contact: {
@@ -40,12 +41,19 @@ export interface CountdownConfig {
     phone: string | null;
     address: string | null;
   };
+  /** Motto as printed on the official banner. */
+  motto: string;
   /**
-   * Path to the official banner/crest image, once supplied by the College.
-   * Until then this stays null and the UI falls back to a drawn placeholder
-   * emblem — never a fabricated photo.
+   * Path to the official banner image, supplied by the College on
+   * 2026-09-09. Swap this if a newer/cropped asset is provided later —
+   * nothing else needs to change.
    */
   bannerImageSrc: string | null;
+  /**
+   * Small circular crest, cropped from the corner of the official banner
+   * above. Used in the page header in place of the drawn placeholder.
+   */
+  crestImageSrc: string | null;
 }
 
 const targetDateFallback = "2026-10-10T00:00:00+01:00"; // WAT, ~30 days out — adjust to the real date when confirmed
@@ -68,8 +76,10 @@ export const countdownConfig: CountdownConfig = {
   },
   contact: {
     email: null,
-    phone: null,
-    address: null,
+    phone: "08034592011, 07089154460",
+    address: "No. 13B Along Dengi Road, Wase, Plateau State",
   },
-  bannerImageSrc: null,
+  motto: "Knowledge for Development",
+  bannerImageSrc: "/images/gdcollege-banner.jpg",
+  crestImageSrc: "/images/gdcollege-crest.png",
 };
