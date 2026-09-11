@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens for GD College Wase.
+ * Brand hex values must match src/config/institution.config.ts — these two
+ * files are the only places a brand colour should be defined.
+ *
+ * Typography: a serif for headings (collegiate, editorial — distinct from
+ * generic SaaS sans-everywhere UI) paired with a clean sans for body/UI
+ * text. System font stacks are used as the fallback; self-host
+ * Source Serif 4 / Inter (or similar) under public/fonts when available —
+ * next/font/google is avoided here since this build environment has no
+ * outbound access to Google Fonts.
+ */
+
+:root {
+  --color-sky: #38bdf8;
+  --color-sky-dark: #0369a1;
+  --color-sky-light: #e0f2fe;
+  --color-surface: #f8fafc;
+  --color-white: #ffffff;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-accent: #f59e0b;
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+
+  --font-display: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+@theme inline {
+  --color-sky: var(--color-sky);
+  --color-sky-dark: var(--color-sky-dark);
+  --color-sky-light: var(--color-sky-light);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-border: var(--color-border);
+  --color-accent: var(--color-accent);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--color-sky-light);
+  color: var(--color-sky-dark);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-sky-dark);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
