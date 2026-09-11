@@ -12,7 +12,7 @@ gate" Next.js module and two real, officially-sourced image assets
 (`images/gdcollege-banner.jpg`, `images/gdcollege-crest.png`) showing the
 College's real address, phone numbers, motto, and 2026/2027 programme
 list.
-
+ 
 Per instruction, this phase does **not** restore that deleted work — Phase
 0 below was built from scratch. The prior commits and those two real
 assets still exist in git history if useful later (e.g. as a genuine

@@ -32,7 +32,7 @@ cd backend
 ```
 
 ## Where to look first
-
+ 
 - Current build status and phase-by-phase gap analysis: `docs/PROJECT_STATUS.md`
 - Institution name/branding/logo/colour — single source of truth: `frontend/src/config/institution.config.ts`
 - API conventions and backend setup: `backend/README.md`

@@ -10,10 +10,17 @@ class Permission extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['slug', 'description'];
+    protected $fillable = [
+        'slug',
+        'description',
+    ];
 
+    /**
+     * Roles that have this permission.
+     */
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class)->withTimestamps();
+        return $this->belongsToMany(Role::class, 'permission_role')
+            ->withTimestamps();
     }
 }
