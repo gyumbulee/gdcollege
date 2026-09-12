@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -20,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  * Token-based (Sanctum personal access token) authentication. Chosen over
  * cookie-based SPA auth so the same API can serve the Next.js frontend and
  * a future mobile client identically. The frontend never stores this token
- * in localStorage — see frontend/src/app/api/session/*/route.ts, which
+ * in localStorage — see frontend/src/app/api/session/[...]/route.ts, which
  * holds it in an httpOnly cookie instead.
  */
 class AuthController extends Controller
@@ -30,8 +29,10 @@ class AuthController extends Controller
      * are created by the ICT/System Administrator (Phase 21), never via a
      * public endpoint, per the spec's role model.
      */
-    public function register(RegisterApplicantRequest $request, AuditLogger $audit): JsonResponse
-    {
+    public function register(
+        RegisterApplicantRequest $request,
+        AuditLogger $audit
+    ): JsonResponse {
         $user = DB::transaction(function () use ($request) {
             $user = User::create([
                 'name' => $request->string('name'),
@@ -42,9 +43,12 @@ class AuthController extends Controller
             ]);
 
             $applicantRole = Role::where('slug', 'applicant')->firstOrFail();
+
             $user->roles()->attach($applicantRole->id);
 
-            Applicant::create(['user_id' => $user->id]);
+            Applicant::create([
+                'user_id' => $user->id,
+            ]);
 
             return $user;
         });
@@ -63,11 +67,16 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(LoginRequest $request, AuditLogger $audit): JsonResponse
-    {
+    public function login(
+        LoginRequest $request,
+        AuditLogger $audit
+    ): JsonResponse {
         $user = User::where('email', $request->string('email'))->first();
 
-        if (! $user || ! Hash::check($request->string('password'), $user->password)) {
+        if (
+            ! $user ||
+            ! Hash::check($request->string('password'), $user->password)
+        ) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
@@ -75,7 +84,9 @@ class AuthController extends Controller
 
         if (! $user->isActive()) {
             throw ValidationException::withMessages([
-                'email' => ['This account is not active. Contact the ICT/System Administrator.'],
+                'email' => [
+                    'This account is not active. Contact the ICT/System Administrator.',
+                ],
             ]);
         }
 
@@ -93,8 +104,10 @@ class AuthController extends Controller
         ]);
     }
 
-    public function logout(Request $request, AuditLogger $audit): JsonResponse
-    {
+    public function logout(
+        Request $request,
+        AuditLogger $audit
+    ): JsonResponse {
         $request->user()->currentAccessToken()->delete();
 
         $audit->log('logout');
