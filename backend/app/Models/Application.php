@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Application extends Model
 {
@@ -58,6 +59,16 @@ class Application extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ApplicationDocument::class);
+    }
+
+    public function admission(): HasOne
+    {
+        return $this->hasOne(Admission::class);
+    }
+
+    public function student(): HasOne
+    {
+        return $this->hasOne(Student::class);
     }
 
     public function isEditableByApplicant(): bool

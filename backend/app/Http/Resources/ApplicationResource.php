@@ -66,6 +66,17 @@ class ApplicationResource extends JsonResource
                 'original_filename' => $d->original_filename,
                 'size_bytes' => $d->size_bytes,
             ])),
+            'admission' => $this->whenLoaded('admission', fn () => $this->admission ? [
+                'decision' => $this->admission->decision,
+                'decision_reason' => $this->admission->decision_reason,
+                'decided_at' => $this->admission->decided_at,
+                'decided_by' => $this->admission->relationLoaded('decidedBy') && $this->admission->decidedBy
+                    ? $this->admission->decidedBy->name
+                    : null,
+            ] : null),
+            'student' => $this->whenLoaded('student', fn () => $this->student ? [
+                'matric_number' => $this->student->matric_number,
+            ] : null),
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Academic;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academic\CourseOfferingRequest;
+use App\Http\Resources\CourseOfferingResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\CourseOffering;
 use Illuminate\Http\Request;
@@ -25,26 +26,26 @@ class CourseOfferingController extends Controller
             }
         }
 
-        return $this->success($query->orderBy('id', 'desc')->get());
+        return $this->success(CourseOfferingResource::collection($query->orderBy('id', 'desc')->get()));
     }
 
     public function store(CourseOfferingRequest $request)
     {
         $offering = CourseOffering::create($request->validated());
 
-        return $this->success($offering->load(self::WITH), 'Course offering created.', 201);
+        return $this->success(new CourseOfferingResource($offering->load(self::WITH)), 'Course offering created.', 201);
     }
 
     public function show(CourseOffering $courseOffering)
     {
-        return $this->success($courseOffering->load(self::WITH));
+        return $this->success(new CourseOfferingResource($courseOffering->load(self::WITH)));
     }
 
     public function update(CourseOfferingRequest $request, CourseOffering $courseOffering)
     {
         $courseOffering->update($request->validated());
 
-        return $this->success($courseOffering->load(self::WITH), 'Course offering updated.');
+        return $this->success(new CourseOfferingResource($courseOffering->load(self::WITH)), 'Course offering updated.');
     }
 
     public function destroy(CourseOffering $courseOffering)

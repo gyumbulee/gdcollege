@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  * Token-based (Sanctum personal access token) authentication. Chosen over
  * cookie-based SPA auth so the same API can serve the Next.js frontend and
  * a future mobile client identically. The frontend never stores this token
- * in localStorage — see frontend/src/app/api/session/ route.ts, which
+ * in localStorage — see frontend/src/app/api/session/*/route.ts, which
  * holds it in an httpOnly cookie instead.
  */
 class AuthController extends Controller

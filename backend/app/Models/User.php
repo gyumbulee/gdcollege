@@ -2,55 +2,31 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
+// Note: this file assumes the standard Laravel 11 skeleton's User model as
+// a starting point (Authenticatable, Notifiable, HasApiTokens). Merge this
+// on top of that file rather than dropping it in blind if the skeleton's
+// version has diverged.
+
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    public function applicant(): HasOne
-    {
-        return $this->hasOne(Applicant::class);
-    }
+    protected $fillable = [
+        'name', 'email', 'phone', 'password', 'status',
+    ];
 
-    public function roles(): BelongsToMany
-    {
-        return $this->belongsToMany(Role::class, 'role_user')
-            ->withPivot(['scope_type', 'scope_id'])
-            ->withTimestamps();
-    }
-
-    public function hasRole(string $role): bool
-    {
-        return $this->roles()
-            ->where('slug', $role)
-            ->exists();
-    }
-
-    public function hasPermission(string $permission): bool
-    {
-        return $this->roles()
-            ->whereHas('permissions', function ($query) use ($permission): void {
-                $query->where('slug', $permission);
-            })
-            ->exists();
-    }
-
-    public function isActive(): bool
-    {
-        return $this->status === 'active';
-    }
+    protected $hidden = [
+        'password', 'remember_token',
+    ];
 
     protected function casts(): array
     {
@@ -58,5 +34,46 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class)->withTimestamps();
+    }
+
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
+    public function student(): HasOne
+    {
+        return $this->hasOne(Student::class);
+    }
+
+    /** True if the user holds a role with the given slug (any scope). */
+    public function hasRole(string $slug): bool
+    {
+        return $this->roles->contains(fn (Role $role) => $role->slug === $slug);
+    }
+
+    /**
+     * True if any of the user's roles carry the given permission slug.
+     * "super_administrator" bypasses this check entirely via
+     * AuthServiceProvider's Gate::before — do not special-case it here too.
+     */
+    public function hasPermission(string $slug): bool
+    {
+        return $this->roles
+            ->loadMissing('permissions')
+            ->pluck('permissions')
+            ->flatten()
+            ->pluck('slug')
+            ->contains($slug);
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
     }
 }
