@@ -1,13 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import type { SessionUser } from "@/types/auth";
 
 type NavItem = { label: string; href: string };
 
-export function MobileNav({ nav }: { nav: readonly NavItem[] }) {
+export function MobileNav({
+  nav,
+  session,
+}: {
+  nav: readonly NavItem[];
+  session: SessionUser | null;
+}) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    await fetch("/api/session/logout", { method: "POST" });
+    setOpen(false);
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <div className="md:hidden">
@@ -42,12 +60,26 @@ export function MobileNav({ nav }: { nav: readonly NavItem[] }) {
             ))}
           </nav>
           <div className="mt-4 flex flex-col gap-2">
-            <Button href="/student/login" variant="ghost">
-              Student Login
-            </Button>
-            <Button href="/admissions/application" variant="primary">
-              Apply Now
-            </Button>
+            {session ? (
+              <>
+                <p className="text-sm text-muted">Signed in as {session.name}</p>
+                <Button href="/portal" variant="ghost" onClick={() => setOpen(false)}>
+                  My Portal
+                </Button>
+                <Button variant="secondary" onClick={handleSignOut} aria-disabled={signingOut}>
+                  {signingOut ? "Signing out…" : "Sign out"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button href="/student/login" variant="ghost" onClick={() => setOpen(false)}>
+                  Student Login
+                </Button>
+                <Button href="/admissions/application" variant="primary" onClick={() => setOpen(false)}>
+                  Apply Now
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}

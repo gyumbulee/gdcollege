@@ -1,6 +1,33 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Phase 4 completion.
+Last updated: Phase 8 completion.
+
+## Starting a new chat? Read this first
+
+This file is the single source of truth for where the project stands.
+Before doing anything else in a fresh session:
+
+1. Read this whole file, then `README.md` and `backend/README.md`.
+2. This build environment (wherever Claude runs) may or may not have
+   PHP/Composer — check with `which php composer`. If absent, the backend
+   is still code-complete and reviewed (brace-balance checked, routes
+   cross-referenced against controllers), just not executed. Say so
+   plainly if that's still the case rather than assuming it's been fixed.
+3. Every phase from 0–8 was verified by standing up a minimal Python stub
+   in place of Laravel (matching the exact `{success, message, data}`
+   envelope) and running the real Next.js app against it — because this
+   sandbox couldn't run PHP. If a real Laravel instance is available, the
+   very first thing worth doing is running the actual test commands in
+   each phase's `backend/README.md` section against it for real, since
+   stub-based tests prove the *contract*, not the real implementation.
+4. Known, deliberately-documented gaps (don't silently "discover" and
+   re-flag these as if new): department-scoping isn't enforced for HOD
+   actions (Phase 5 admissions, Phase 7 registration, Phase 8 result
+   review) — the `role_user.scope_type`/`scope_id` columns from Phase 1
+   exist for this but aren't wired into a policy check anywhere yet.
+   Carryover/prerequisite checks in Phase 7 are proxies pending real
+   Results data (now that Phase 8 exists, this could finally be tightened
+   — see "Immediate next target" below).
 
 ## Repository audit finding (important)
 
@@ -12,7 +39,7 @@ gate" Next.js module and two real, officially-sourced image assets
 (`images/gdcollege-banner.jpg`, `images/gdcollege-crest.png`) showing the
 College's real address, phone numbers, motto, and 2026/2027 programme
 list.
- 
+
 Per instruction, this phase does **not** restore that deleted work — Phase
 0 below was built from scratch. The prior commits and those two real
 assets still exist in git history if useful later (e.g. as a genuine
@@ -31,11 +58,11 @@ source for seed data, once explicitly confirmed).
 | RBAC | ✓ (code complete, unexecuted on backend) | 13 roles + full spec permission list seeded via `RolePermissionSeeder`; `EnsurePermission` middleware + `hasPermission()`/`hasRole()` on `User`; Super Administrator Gate bypass; ICT/System Administrator deliberately excluded from that bypass per spec. |
 | Institution/Academic structure (DB) | ✓ (code complete, unexecuted on backend) | Schools, departments, programmes, academic sessions, semesters, levels, course types, courses (+ prerequisites), course offerings — full CRUD, all configurable, none hardcoded. Sample data clearly marked "(Sample)". |
 | Applicant portal | ✓ (verified live end-to-end against a stub) | Self-registration, multi-section wizard (personal/contact/next-of-kin, programme selection, repeatable O'Level education history, document upload/delete), and submission with server-side completeness validation — tested: submit-with-missing-documents correctly rejected with itemized errors; submit-after-uploading-required-docs correctly succeeded and flipped the application to read-only SUBMITTED. |
-| Admissions | ✗ | Phase 5. |
-| Student Information System | ✗ | Phase 6. |
-| Course registration | ✗ | Phase 7. |
-| Lecturer/HOD portals | ✗ | Phase 8/9. |
-| Examination & results | ✗ | Phase 10/11. |
+| Admissions | ✓ (verified live end-to-end against a stub, one gap noted below) | Staff review workflow (review → shortlist → admit/hold/reject), idempotent applicant-to-student conversion, and a public admission-list search. Every permission slug reused verbatim from the spec's own §4 list — no new permissions needed. |
+| Student Information System | ✓ (verified live end-to-end, including history preservation) | Enrolment history and programme-transfer history verified to genuinely accumulate rather than overwrite — a student enrolled in two sessions and transferred programmes still shows both prior enrolment rows and the full transfer trail. Status changes are permission-gated and audited. Student self-service `/student/me` (matching the spec's own §33 API example) surfaces in the student's own portal view. |
+| Course registration | ✓ (verified live end-to-end, one known scoping gap) | Draft → select courses → save → submit (server-side revalidated against the same rule set as save) → HOD approve/reject. Credit-limit rejection actually tested (a too-small selection was correctly rejected with the exact shortfall message), then a valid selection submitted and approved. Every permission slug reused verbatim from spec §4/§11. HOD department-scoping is not yet enforced — documented plainly, not silently skipped. |
+| Lecturer/HOD portals | ✓ (verified live, full pipeline) | Lecturer: assigned courses, roster, bulk result entry, submit (locks editing). HOD/Academic Officer: results.review/verify/approve/publish, each its own permission. |
+| Examination & results | ✓ (verified live, full pipeline) | Full DRAFT→SUBMITTED→REVIEWED→VERIFIED→APPROVED→PUBLISHED chain tested end-to-end with real grade computation (85 → grade A) from a DB-configurable grading scale and DB-configurable result components (not hardcoded CA=30/Exam=70). Confirmed a student sees nothing until PUBLISHED, then sees it immediately after. |
 | Finance & payments | ✗ | Phase 12/13. |
 | Registrar/documents/clearance | ✗ | Phase 14/15/16. |
 | Notifications/CMS | ✗ | Phase 17/18. |
@@ -200,10 +227,182 @@ read-only "submitted" view. This is the first phase where the full
 create → edit → validate → transition lifecycle was exercised, not just
 reads.
 
+## What Phase 5 added
+
+- **Backend:** `admissions` (one decision per application — ADMIT/HOLD/
+  REJECT, upserted so a decision can be corrected without leaving stale
+  rows; audit log is the trail of who/when, not row history) and a
+  minimal `students` table (Phase 6 will expand it with enrolments/
+  programme history rather than duplicating it). `MatricNumberGenerator`
+  mirrors Phase 4's `ApplicationNumberGenerator` — same locked-counter
+  concurrency safety. `AdmissionConversionService` is explicitly
+  idempotent: converting the same application twice returns the existing
+  student rather than creating a duplicate, satisfying the spec's own
+  requirement (§7, §36) directly. `StaffApplicationController` reuses the
+  spec's exact permission slugs (`applications.view/review/shortlist/
+  admit/reject`) with zero Phase-5 permission additions needed — unlike
+  Phase 2/4 which each needed one new slug. A public `AdmissionListController`
+  answers "check my status" queries with deliberately minimal disclosure
+  (name, programme, decision — no contact details, no way to enumerate
+  other applicants).
+- **Frontend:** a real public admission-list search page; a staff
+  admissions list + detail view with a permission-aware decision panel
+  (review/shortlist/admit/hold/reject/convert), all through the same
+  Next.js BFF pattern established in Phase 1 — no bearer token ever
+  reaches client-side JavaScript.
+
+**Verified live, end-to-end**, against an extended stub: staff login →
+application list shows a pre-seeded SUBMITTED application → review →
+shortlist → admit (with a reason) → convert to student (matric number
+generated) → **called convert a second time and got the identical
+student back, not a duplicate** — the idempotency guarantee actually
+holds, not just in code review. One piece — the public admission-list
+search finding a just-recorded decision — was reasoned through and fixed
+in the stub (it wasn't URL-decoding query parameters the way Laravel
+does automatically) but I wasn't able to get a clean live confirmation of
+that specific path before this environment's background processes kept
+dying between tool calls; worth a manual smoke-test first once the real
+backend is running.
+
+## What Phase 6 added
+
+- **Backend:** expanded `students` (added `current_level_id`),
+  `student_enrolments` (one row per session — never overwritten as a
+  student progresses, per §36), and `student_programme_histories` (old
+  and new programme both kept on every transfer). `MatricNumberGenerator`-
+  style concurrency safety was already in place from Phase 5;
+  `AdmissionConversionService` now also creates the entry-level enrolment
+  row automatically at conversion time. `StudentController`,
+  `StudentEnrolmentController`, `StudentTransferController` reuse the
+  spec's exact permission slugs (`students.view/update/status.change`) —
+  zero new permissions needed, same as Phase 5. `GET /student/me` matches
+  the spec's own API example (§33) for student self-service.
+- **Frontend:** staff student search (name/matric/email/phone) and a
+  detail page showing profile, full enrolment history, and full programme-
+  transfer history, plus an actions panel for status changes, adding a new
+  session enrolment, and recording a transfer. The generic `/portal` page
+  now shows a real student panel (matric number, programme, level, status)
+  when the signed-in account holds the student role.
+
+**Verified live, end-to-end**, against a stub: staff search finds the
+student → detail page shows correct profile/programme/school chain →
+**enrolled the student in a second session (2027/2028, ND II) — the
+2026/2027 ND I enrolment row was preserved, not replaced** → **transferred
+programme (CS → Accountancy) — the prior enrolment history stayed intact
+and a new transfer-history row was added showing both the old and new
+programme** → status change to SUSPENDED took effect → student's own
+`/portal` view correctly showed their matric number and record → a
+student-role account was correctly blocked from the staff student-search
+page. One real bug was caught and fixed during this verification: the
+initial test stub didn't implement the PATCH method Next.js was correctly
+sending, producing a 500 — confirming the frontend's error path surfaces
+backend failures rather than masking them, and a reminder that these
+stub-based tests only prove the *contract*, not a substitute for testing
+against the real Laravel app.
+
+## Also fixed this phase: global sign-out
+
+Logout previously only lived on `/portal`. `SiteHeader` is now an async
+Server Component that checks the session and shows "My Portal" + a real
+sign-out control from every page (desktop and mobile nav both), not just
+one. Verified live: signed in, navigated to a staff-only page, confirmed
+sign-out was visible and worked from there.
+
+## What Phase 7 added
+
+- **Backend:** `course_registrations` (one per student per semester —
+  DB-enforced) and `course_registration_items` (no duplicate offering per
+  registration — also DB-enforced), plus a `registration_opens_at`/
+  `registration_closes_at` window added to `semesters`. A single
+  `CourseRegistrationService` is the one place every rule from spec §11
+  lives — programme match, duplicate prevention, credit limits
+  (configurable, `config/course_registration.php`), the registration
+  window, and prerequisites — and it's used by *both* the save-draft and
+  submit endpoints, so neither can drift from the other. **Carryover and
+  prerequisite checks are honestly weaker than the spec's ideal** until
+  Phase 8 (Results) exists: a course is flagged "carryover" if its level
+  differs from the student's current level (a proxy, not pass/fail-based),
+  and a prerequisite is satisfied by "previously registered" rather than
+  "previously passed" — both documented inline in code and config, with
+  the exact line to tighten once real result data exists. HOD approval
+  reuses the spec's exact `course_registrations.*` permission slugs. Also
+  fixed a Phase 2 gap while I was in this code: `CourseOfferingController`
+  never got a JSON-shape Resource wrapper, so its relation keys leaked
+  Eloquent's camelCase method names — added `CourseOfferingResource` since
+  Phase 7 depends on consuming that endpoint correctly.
+- **Frontend:** a real student registration page (checkbox course list,
+  live credit total, save/submit) and a real HOD review page
+  (list → detail → approve/return-with-reason). `/portal` now links to
+  both from a student's or approver's own dashboard.
+
+**Verified live, end-to-end**: registering with only 3 credit units
+correctly failed submission with the specific shortfall message
+("Total credit units (3) is below the minimum of..."); registering 5
+units succeeded; the HOD saw it appear in their review queue and approved
+it; a student account was correctly blocked from the HOD review page.
+
+**Known, documented gap:** HOD approval doesn't yet check department
+scoping (an HOD can currently act on any registration, not just their
+own department's) — the `role_user` scope columns to fix this exist since
+Phase 1 but aren't wired into a policy check yet. Flagged in code and here
+rather than silently left as a security assumption.
+
+## What Phase 8 added
+
+- **Backend:** `grading_scales` and `result_components` — both fully
+  DB-configurable (§12: "do not hardcode CA=30/Exam=70" — a lecturer's UI
+  and the grade calculator both read component names/max-scores from the
+  DB, never a fixed pair). `results` — one row per student per course
+  offering, `component_scores` as JSON keyed by component name (a
+  documented simplification over a separate scores-per-component table,
+  since components are a tiny fixed set per institution). `GradeCalculator`
+  computes totals and looks up the grade/point purely from DB data. The
+  full status pipeline from §12 (DRAFT → SUBMITTED → REVIEWED → VERIFIED →
+  APPROVED → PUBLISHED) with one permission per transition, reusing the
+  spec's exact `results.*` slugs — no new permissions needed, same as
+  Phases 5–7. `StudentResultController` is the *only* results endpoint a
+  student role can reach, and it hard-filters to PUBLISHED regardless of
+  query params — "students see only published results" isn't a frontend
+  convention, it's enforced at the one place students can read from.
+  `CourseOfferingPolicy` ensures a lecturer only ever touches their own
+  assigned offerings. Also fixed while touching adjacent code: added
+  `ResultComponentController` (a small new read endpoint so frontends
+  never hardcode component names).
+- **Frontend:** lecturer course list + a result-entry grid with dynamic
+  columns (rendered from whatever components are DB-configured, not
+  hardcoded "CA"/"Exam" headers), save-draft/submit; a staff results
+  queue showing only the action the signed-in account is permissioned for
+  at each result's current stage; a student results page.
+
+**Verified live, end-to-end, the full chain**: lecturer entered CA=25 +
+Examination=60 → computed total 85, grade A (from the seeded default
+scale) → saved as draft → submitted (locked from further lecturer
+editing) → HOD reviewed → **student checked results and correctly saw
+nothing** (still pre-publication) → Academic Officer verified → approved
+→ published → **student then saw the published A** immediately. This is
+the first phase where every stage of a genuinely multi-role,
+multi-approval-stage pipeline was exercised in one continuous run.
+
+**One stub bug caught during testing** (not app code): my test stub
+initially gave lecturer/HOD/AO accounts empty permission arrays, so
+Phase 8's own permission checks correctly blocked them — a good sign
+(the checks work), but a reminder to always give stub accounts realistic
+permissions matching `RolePermissionSeeder` rather than assuming a role
+name alone is enough.
+
 ## Immediate next target
 
-**Phase 5 — Admissions Management**: the staff-facing side of what Phase 4
-built — screening, document verification, shortlisting, admit/reject/hold
-decisions, the admission list, admission letters, and the
-applicant-to-student conversion (which must be idempotent per the spec —
-repeating the action must never create a duplicate student).
+**Phase 9 — Result Correction & Academic Progression**: `results.correct`
+(already a seeded permission, unused until now) for handling a published
+result that turns out to be wrong — old/new value, reason, approval chain,
+full audit trail, never an in-place edit. Then academic standing
+(GOOD_STANDING/PROBATION/AT_RISK/COMPLETED) computed from real GPA/CGPA
+now that Phase 8 produces real grade points. This is also the point to
+revisit Phase 7's carryover/prerequisite proxies — real pass/fail data
+finally exists to check against.
+
+Also worth doing whenever a real PHP environment is available for the
+first time: run `composer install`, `migrate`, `db:seed`, and manually
+replay a few of the `curl` sequences from `backend/README.md`'s phase
+sections against the genuine backend, since every verification so far has
+been against a stand-in stub.

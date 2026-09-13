@@ -47,4 +47,11 @@ export type Application = {
   };
   education_records: EducationRecord[];
   documents: ApplicationDocument[];
+  admission?: {
+    decision: "ADMIT" | "HOLD" | "REJECT";
+    decision_reason: string | null;
+    decided_at: string;
+    decided_by: string | null;
+  } | null;
+  student?: { matric_number: string } | null;
 };

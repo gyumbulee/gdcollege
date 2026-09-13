@@ -3,10 +3,13 @@ import { institutionConfig } from "@/config/institution.config";
 import { CrestMark } from "@/components/brand/CrestMark";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
+import { SignOutButton } from "@/components/auth/SignOutButton";
+import { getSession } from "@/lib/auth/session";
 import { MobileNav } from "./MobileNav";
 
-export function SiteHeader() {
+export async function SiteHeader() {
   const { identity, nav } = institutionConfig;
+  const session = await getSession();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur">
@@ -31,15 +34,27 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button href="/student/login" variant="ghost">
-            Student Login
-          </Button>
-          <Button href="/admissions/application" variant="primary">
-            Apply Now
-          </Button>
+          {session ? (
+            <>
+              <span className="mr-1 text-sm text-muted">{session.name}</span>
+              <Button href="/portal" variant="ghost">
+                My Portal
+              </Button>
+              <SignOutButton />
+            </>
+          ) : (
+            <>
+              <Button href="/student/login" variant="ghost">
+                Student Login
+              </Button>
+              <Button href="/admissions/application" variant="primary">
+                Apply Now
+              </Button>
+            </>
+          )}
         </div>
 
-        <MobileNav nav={nav} />
+        <MobileNav nav={nav} session={session} />
       </Container>
     </header>
   );

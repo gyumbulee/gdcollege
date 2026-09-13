@@ -32,7 +32,7 @@ cd backend
 ```
 
 ## Where to look first
- 
+
 - Current build status and phase-by-phase gap analysis: `docs/PROJECT_STATUS.md`
 - Institution name/branding/logo/colour — single source of truth: `frontend/src/config/institution.config.ts`
 - API conventions and backend setup: `backend/README.md`
@@ -64,6 +64,31 @@ working search form and detail route.
 application wizard (personal/contact/next-of-kin, education history,
 document uploads), and server-side submission validation — verified live
 end-to-end including the reject-then-accept completeness-check path.
+
+**Phase 5 — Admissions Management:** staff review workflow (review →
+shortlist → admit/hold/reject), an idempotent applicant-to-student
+conversion (verified live — converting twice returns the same student,
+never a duplicate), and a public admission-list search.
+
+**Phase 6 — Student Information System:** enrolment history and
+programme-transfer history, both verified live to genuinely accumulate
+rather than overwrite (a student enrolled in two sessions and transferred
+programmes still shows the full history of both), plus student
+self-service and staff search/profile views.
+
+**Phase 7 — Course Registration:** save → submit → HOD approve/reject,
+with credit-limit rejection actually tested live (not just reasoned
+about), plus a fix so sign-out is now reachable from every page, not just
+`/portal`.
+
+**Phase 8 — Lecturer & HOD Portals + Results:** the full DRAFT →
+SUBMITTED → REVIEWED → VERIFIED → APPROVED → PUBLISHED pipeline, verified
+live end-to-end in one continuous run (lecturer entry through student
+seeing the published grade) — including confirming students see nothing
+before publication.
+
+**Starting a new chat to continue?** Read `docs/PROJECT_STATUS.md` first —
+it opens with a short primer on exactly that.
 
 See `docs/PROJECT_STATUS.md` for the full phase-by-phase breakdown and
 exactly what's been verified running versus code-complete-but-unexecuted
