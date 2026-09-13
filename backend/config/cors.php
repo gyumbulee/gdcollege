@@ -2,12 +2,23 @@
 
 return [
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    /*
+    |--------------------------------------------------------------------------
+    | Cross-Origin Resource Sharing (CORS) Configuration
+    |--------------------------------------------------------------------------
+    */
+
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        'login',
+        'logout',
+    ],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => array_filter(
-        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000'))
+        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://192.168.208.156:3000'))
     ),
 
     'allowed_origins_patterns' => [],

@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             DevSuperAdminSeeder::class,
             AcademicStructureSeeder::class,
             ResultConfigSeeder::class,
+            DevSampleStaffSeeder::class,
             // Institution row seeder is added once official details are
             // confirmed (currently left null — see Phase 0/1 config).
         ]);

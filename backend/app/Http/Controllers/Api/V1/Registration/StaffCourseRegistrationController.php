@@ -13,20 +13,18 @@ use Illuminate\Http\Request;
 /**
  * Staff (HOD/Academic Officer) side of registration approval.
  *
- * KNOWN SIMPLIFICATION: the spec's role model scopes an HOD to their own
- * department (role_user.scope_type/scope_id, from Phase 1), but that scope
- * is not yet enforced here — any account with `course_registrations.approve`
- * can act on any registration, department-blind. Wiring real department
- * scoping needs a small policy check (registration.student.programme
- * .department_id === the HOD's role_user scope_id) that's straightforward
- * to add once that scoping is exercised elsewhere too, rather than
- * building it once, ad hoc, here.
+ * Department scoping: an HOD with a role_user.scope_type='department' row
+ * (Phase 1) can only approve/reject registrations for students in that
+ * department — enforced by CourseRegistrationPolicy@approve/reject (Phase
+ * 9). A user with no department scope configured is unrestricted by scope
+ * (the `course_registrations.approve` permission middleware already
+ * gated the ability).
  */
 class StaffCourseRegistrationController extends Controller
 {
     use ApiResponse;
 
-    private const WITH = ['academicSession', 'semester', 'student.user', 'items.courseOffering.course', 'items.courseOffering.level'];
+    private const WITH = ['academicSession', 'semester', 'student.user', 'student.programme', 'items.courseOffering.course', 'items.courseOffering.level'];
 
     public function index(Request $request)
     {
@@ -36,6 +34,15 @@ class StaffCourseRegistrationController extends Controller
             $query->where('status', $request->input('status'));
         } else {
             $query->where('status', '!=', CourseRegistration::STATUS_DRAFT);
+        }
+
+        // Department scoping (Phase 9): mirrors CourseRegistrationPolicy@approve
+        // — an HOD scoped to a department only sees that department's
+        // registrations here; unscoped accounts (or non-HOD roles holding
+        // course_registrations.view) are unrestricted.
+        $scopeIds = $request->user()->departmentScopeIds();
+        if (! empty($scopeIds)) {
+            $query->whereHas('student.programme', fn ($q) => $q->whereIn('department_id', $scopeIds));
         }
 
         return $this->success(CourseRegistrationResource::collection(
@@ -50,6 +57,8 @@ class StaffCourseRegistrationController extends Controller
 
     public function approve(CourseRegistration $courseRegistration, AuditLogger $audit)
     {
+        $this->authorize('approve', $courseRegistration);
+
         if ($courseRegistration->status !== CourseRegistration::STATUS_SUBMITTED) {
             return $this->fail('Only a SUBMITTED registration can be approved.', [], 422);
         }
@@ -67,6 +76,8 @@ class StaffCourseRegistrationController extends Controller
 
     public function reject(RegistrationDecisionRequest $request, CourseRegistration $courseRegistration, AuditLogger $audit)
     {
+        $this->authorize('reject', $courseRegistration);
+
         if ($courseRegistration->status !== CourseRegistration::STATUS_SUBMITTED) {
             return $this->fail('Only a SUBMITTED registration can be returned.', [], 422);
         }

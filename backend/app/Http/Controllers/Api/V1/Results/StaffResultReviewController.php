@@ -17,15 +17,18 @@ use Illuminate\Http\Request;
  * only the ones matching their stage (HOD reviews; Academic Officer
  * verifies/approves/publishes — see RolePermissionSeeder).
  *
- * KNOWN SIMPLIFICATION, same as Phase 7's HOD approval: no department
- * scoping is enforced yet — see role_user.scope_type/scope_id from
- * Phase 1.
+ * Department scoping (Phase 9): the `review` transition is the HOD stage
+ * (see RolePermissionSeeder — only `hod` holds `results.review`), so it's
+ * the one gated by ResultPolicy@review against role_user's department
+ * scope. verify/approve/publish belong to the institution-wide Academic
+ * Officer role and stay unscoped, matching CourseRegistrationPolicy's
+ * approach for registrations.
  */
 class StaffResultReviewController extends Controller
 {
     use ApiResponse;
 
-    private const WITH = ['student.user', 'courseOffering.course'];
+    private const WITH = ['student.user', 'courseOffering.course', 'courseOffering.programme'];
 
     public function index(Request $request)
     {
@@ -41,6 +44,12 @@ class StaffResultReviewController extends Controller
             $query->where('course_offering_id', $request->input('course_offering_id'));
         }
 
+        // Department scoping (Phase 9) — see StaffCourseRegistrationController.
+        $scopeIds = $request->user()->departmentScopeIds();
+        if (! empty($scopeIds)) {
+            $query->whereHas('courseOffering.programme', fn ($q) => $q->whereIn('department_id', $scopeIds));
+        }
+
         return $this->success(ResultResource::collection(
             $query->orderByDesc('submitted_at')->paginate($request->integer('per_page', 50))
         ));
@@ -48,6 +57,8 @@ class StaffResultReviewController extends Controller
 
     public function review(Result $result, AuditLogger $audit)
     {
+        $this->authorize('review', $result);
+
         return $this->transition($result, Result::STATUS_SUBMITTED, Result::STATUS_REVIEWED, 'reviewed_by', 'reviewed_at', $audit, 'results.review');
     }
 

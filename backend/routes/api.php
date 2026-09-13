@@ -16,6 +16,11 @@ use App\Http\Controllers\Api\V1\Admissions\ApplicationEducationController;
 use App\Http\Controllers\Api\V1\Admissions\StaffApplicationController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Hod\HodAcademicController;
+use App\Http\Controllers\Api\V1\Hod\HodDashboardController;
+use App\Http\Controllers\Api\V1\Hod\HodReportController;
+use App\Http\Controllers\Api\V1\Hod\HodStaffController;
+use App\Http\Controllers\Api\V1\Hod\HodStudentController;
 use App\Http\Controllers\Api\V1\Registration\CourseRegistrationController;
 use App\Http\Controllers\Api\V1\Registration\StaffCourseRegistrationController;
 use App\Http\Controllers\Api\V1\Results\LecturerCourseController;
@@ -277,6 +282,27 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('role:student')->group(function () {
             Route::get('/student/results', [StudentResultController::class, 'index']);
+        });
+
+        /*
+        |----------------------------------------------------------------
+        | HOD Portal (Phase 9)
+        |----------------------------------------------------------------
+        | Every endpoint here resolves to exactly one department via
+        | ResolvesHodDepartment (role_user.scope_type='department') and
+        | is read-only — the HOD's write actions (approve/reject
+        | registrations, review results) already exist above under
+        | staff/course-registrations and staff/results, now department-
+        | scoped by CourseRegistrationPolicy/ResultPolicy.
+        |----------------------------------------------------------------
+        */
+        Route::middleware('role:hod')->prefix('hod')->group(function () {
+            Route::get('/dashboard', [HodDashboardController::class, 'index']);
+            Route::get('/students', [HodStudentController::class, 'index']);
+            Route::get('/staff', [HodStaffController::class, 'index']);
+            Route::get('/programmes', [HodAcademicController::class, 'programmes']);
+            Route::get('/course-offerings', [HodAcademicController::class, 'courseOfferings']);
+            Route::get('/reports', [HodReportController::class, 'index']);
         });
     });
 

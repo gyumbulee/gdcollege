@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Models\Application;
 use App\Models\CourseOffering;
 use App\Models\CourseRegistration;
+use App\Models\Result;
 use App\Policies\ApplicationPolicy;
 use App\Policies\CourseOfferingPolicy;
 use App\Policies\CourseRegistrationPolicy;
+use App\Policies\ResultPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -17,6 +19,7 @@ class AuthServiceProvider extends ServiceProvider
         Application::class => ApplicationPolicy::class,
         CourseRegistration::class => CourseRegistrationPolicy::class,
         CourseOffering::class => CourseOfferingPolicy::class,
+        Result::class => ResultPolicy::class,
     ];
 
     public function boot(): void

@@ -12,7 +12,7 @@ use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Middleware;
-
+ 
 return Application::configure(basePath: dirname(__DIR__))
     // ... existing ->withRouting(...) etc unchanged ...
     ->withMiddleware(function (Middleware $middleware) {

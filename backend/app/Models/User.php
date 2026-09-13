@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -75,5 +76,32 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    /**
+     * Department IDs this user's role assignments are scoped to (Phase 1's
+     * role_user.scope_type/scope_id — e.g. an HOD's role_user row scoped
+     * scope_type='department', scope_id=<department id>). Wired up in
+     * Phase 9 for department-scoped policy checks (CourseRegistrationPolicy,
+     * ResultPolicy) — see docs/PROJECT_STATUS.md for background.
+     *
+     * An empty return means "no department scope configured for this
+     * user" — callers should treat that as unrestricted-by-scope (the
+     * permission check already gated the ability) rather than as "scoped
+     * to nothing", so existing accounts without a scope assigned yet
+     * aren't silently locked out.
+     *
+     * @return int[]
+     */
+    public function departmentScopeIds(): array
+    {
+        return DB::table('role_user')
+            ->where('user_id', $this->id)
+            ->where('scope_type', 'department')
+            ->pluck('scope_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
     }
 }

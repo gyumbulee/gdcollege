@@ -92,12 +92,12 @@ class CourseRegistrationController extends Controller
             return $this->fail('Could not save these course selections.', $blocking, 422);
         }
 
-        DB::transaction(function () use ($courseRegistration, $offerings) {
+        DB::transaction(function () use ($courseRegistration, $offerings, $validator) {
             $courseRegistration->items()->delete();
             foreach ($offerings as $offering) {
                 $courseRegistration->items()->create([
                     'course_offering_id' => $offering->id,
-                    'is_carryover' => $offering->level_id !== $courseRegistration->student->current_level_id,
+                    'is_carryover' => $validator->isCarryover($courseRegistration->student, $offering),
                 ]);
             }
         });

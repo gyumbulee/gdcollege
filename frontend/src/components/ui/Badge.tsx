@@ -2,13 +2,15 @@ export function Badge({
   tone = "sky",
   children,
 }: {
-  tone?: "sky" | "amber" | "muted";
+  tone?: "sky" | "amber" | "muted" | "success" | "danger";
   children: React.ReactNode;
 }) {
   const tones = {
     sky: "bg-sky-light text-sky-dark",
     amber: "bg-amber-50 text-amber-700",
     muted: "bg-slate-100 text-muted",
+    success: "bg-green-50 text-success",
+    danger: "bg-red-50 text-danger",
   } as const;
 
   return (
