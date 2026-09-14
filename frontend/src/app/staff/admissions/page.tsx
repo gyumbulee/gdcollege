@@ -40,9 +40,9 @@ export default async function StaffAdmissionsListPage() {
 
   const token = await getSessionToken();
   const { body } = await listStaffApplications(token!);
-  const applications: Application[] = body.success
-    ? ((body.data as unknown as { data: Application[] }).data ?? (body.data as unknown as Application[]))
-    : [];
+const applications: Application[] = body.success
+  ? ((body.data as unknown as { items?: Application[] }).items ?? [])
+  : [];
 
   return (
     <Container className="py-12">
