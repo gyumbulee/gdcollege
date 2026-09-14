@@ -15,6 +15,18 @@ use App\Http\Controllers\Api\V1\Admissions\ApplicationDocumentController;
 use App\Http\Controllers\Api\V1\Admissions\ApplicationEducationController;
 use App\Http\Controllers\Api\V1\Admissions\StaffApplicationController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Clearance\StaffClearanceController;
+use App\Http\Controllers\Api\V1\Clearance\StudentClearanceController;
+use App\Http\Controllers\Api\V1\Documents\PublicDocumentVerificationController;
+use App\Http\Controllers\Api\V1\Documents\StaffDocumentController;
+use App\Http\Controllers\Api\V1\Documents\StudentDocumentController;
+use App\Http\Controllers\Api\V1\Finance\FeeStructureController;
+use App\Http\Controllers\Api\V1\Finance\FinancialReportController;
+use App\Http\Controllers\Api\V1\Finance\InvoiceController;
+use App\Http\Controllers\Api\V1\Finance\PaymentController;
+use App\Http\Controllers\Api\V1\Finance\PaymentWebhookController;
+use App\Http\Controllers\Api\V1\Finance\StaffPaymentController;
+use App\Http\Controllers\Api\V1\Finance\StudentInvoiceController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Hod\HodAcademicController;
 use App\Http\Controllers\Api\V1\Hod\HodDashboardController;
@@ -22,6 +34,7 @@ use App\Http\Controllers\Api\V1\Hod\HodReportController;
 use App\Http\Controllers\Api\V1\Hod\HodStaffController;
 use App\Http\Controllers\Api\V1\Hod\HodStudentController;
 use App\Http\Controllers\Api\V1\Registration\CourseRegistrationController;
+use App\Http\Controllers\Api\V1\Registry\RegistrarController;
 use App\Http\Controllers\Api\V1\Registration\StaffCourseRegistrationController;
 use App\Http\Controllers\Api\V1\Results\LecturerCourseController;
 use App\Http\Controllers\Api\V1\Results\LecturerResultController;
@@ -71,6 +84,29 @@ Route::prefix('v1')->group(function () {
     Route::get('/programmes', [ProgrammeController::class, 'index']);
     Route::get('/programmes/{programme}', [ProgrammeController::class, 'show']);
     Route::get('/admission-list/search', [AdmissionListController::class, 'search']);
+
+    /*
+    |----------------------------------------------------------------------
+    | Payment gateway webhooks (Phase 10 — Finance & Bursary)
+    |----------------------------------------------------------------------
+    | Necessarily public/unauthenticated — a gateway cannot hold a Sanctum
+    | session. Protected instead by each driver's own
+    | verifyWebhookSignature() (checked first, inside the controller) and
+    | by PaymentVerificationService re-verifying against the gateway's own
+    | API before ever trusting anything this payload claims (§21).
+    |----------------------------------------------------------------------
+    */
+    Route::post('/payments/webhook/{gateway}', [PaymentWebhookController::class, 'handle']);
+
+    /*
+    |----------------------------------------------------------------------
+    | Public document verification (Phase 11)
+    |----------------------------------------------------------------------
+    | §22: /verify/{verificationCode}. Public by design — returns only
+    | IssuedDocument::toPublicArray(), never the private content snapshot.
+    |----------------------------------------------------------------------
+    */
+    Route::get('/documents/verify/{code}', [PublicDocumentVerificationController::class, 'show']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -303,6 +339,97 @@ Route::prefix('v1')->group(function () {
             Route::get('/programmes', [HodAcademicController::class, 'programmes']);
             Route::get('/course-offerings', [HodAcademicController::class, 'courseOfferings']);
             Route::get('/reports', [HodReportController::class, 'index']);
+        });
+
+        /*
+        |----------------------------------------------------------------
+        | Finance & Bursary (Phase 10)
+        |----------------------------------------------------------------
+        | Student side is ownership-scoped (role:student + "it's your own
+        | student_id", same pattern as course-registrations/results — see
+        | StudentInvoiceController/PaymentController). Staff side is
+        | permission-gated per action, matching every other staff module.
+        |----------------------------------------------------------------
+        */
+        Route::middleware('role:student')->group(function () {
+            Route::get('/student/invoices', [StudentInvoiceController::class, 'index']);
+            Route::get('/student/invoices/{invoice}', [StudentInvoiceController::class, 'show']);
+            Route::post('/student/invoices/{invoice}/pay', [PaymentController::class, 'initiate']);
+            Route::get('/student/payments/{payment}/status', [PaymentController::class, 'status']);
+        });
+
+        Route::middleware('permission:fee_structures.manage')->group(function () {
+            Route::apiResource('fee-structures', FeeStructureController::class)->except(['destroy']);
+            Route::delete('/fee-structures/{feeStructure}', [FeeStructureController::class, 'destroy']);
+            Route::post('/fee-structures/{feeStructure}/items', [FeeStructureController::class, 'addItem']);
+            Route::patch('/fee-structures/{feeStructure}/items/{item}', [FeeStructureController::class, 'updateItem']);
+            Route::delete('/fee-structures/{feeStructure}/items/{item}', [FeeStructureController::class, 'removeItem']);
+        });
+
+        Route::middleware('permission:invoices.view')->group(function () {
+            Route::get('/invoices', [InvoiceController::class, 'index']);
+            Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+            Route::get('/finance/reports', [FinancialReportController::class, 'index']);
+        });
+        Route::middleware('permission:invoices.manage')->group(function () {
+            Route::post('/invoices', [InvoiceController::class, 'store']);
+            Route::post('/invoices/{invoice}/void', [InvoiceController::class, 'void']);
+        });
+
+        Route::middleware('permission:payments.view')->group(function () {
+            Route::get('/staff/payments', [StaffPaymentController::class, 'index']);
+            Route::get('/staff/payments/{payment}', [StaffPaymentController::class, 'show']);
+        });
+        Route::middleware('permission:payments.verify')->group(function () {
+            Route::post('/staff/payments/{payment}/verify', [StaffPaymentController::class, 'verify']);
+        });
+        Route::middleware('permission:payments.refund')->group(function () {
+            Route::post('/staff/payments/{payment}/refund', [StaffPaymentController::class, 'refund']);
+        });
+
+        /*
+        |----------------------------------------------------------------
+        | Documents & Clearance (Phase 11)
+        |----------------------------------------------------------------
+        | Instant document types are self-service (ownership-scoped, no
+        | permission needed — same pattern as invoices/results). Non-instant
+        | types go through a DocumentRequest a `documents.issue` holder
+        | processes. Clearance decisions are gated by `clearance.approve`
+        | at the route level, then ClearanceItemPolicy narrows to "your
+        | stage only" (and department scope for the DEPARTMENT stage).
+        |----------------------------------------------------------------
+        */
+        Route::middleware('role:student')->prefix('student/documents')->group(function () {
+            Route::get('/', [StudentDocumentController::class, 'index']);
+            Route::get('/requests', [StudentDocumentController::class, 'requests']);
+            Route::post('/request', [StudentDocumentController::class, 'request']);
+            Route::post('/admission-letter', [StudentDocumentController::class, 'admissionLetter']);
+            Route::post('/registration-slip/{courseRegistration}', [StudentDocumentController::class, 'registrationSlip']);
+            Route::post('/result-slip', [StudentDocumentController::class, 'resultSlip']);
+            Route::post('/receipt/{payment}', [StudentDocumentController::class, 'paymentReceipt']);
+        });
+
+        Route::middleware('role:student')->group(function () {
+            Route::get('/student/clearance', [StudentClearanceController::class, 'show']);
+            Route::post('/student/clearance/request', [StudentClearanceController::class, 'request']);
+        });
+
+        Route::middleware('permission:documents.issue')->group(function () {
+            Route::get('/staff/document-requests', [StaffDocumentController::class, 'index']);
+            Route::get('/staff/document-requests/{documentRequest}', [StaffDocumentController::class, 'show']);
+            Route::post('/staff/document-requests/{documentRequest}/process', [StaffDocumentController::class, 'process']);
+            Route::post('/staff/document-requests/{documentRequest}/issue', [StaffDocumentController::class, 'issue']);
+            Route::post('/staff/issued-documents/{issuedDocument}/revoke', [StaffDocumentController::class, 'revoke']);
+        });
+
+        Route::middleware('permission:clearance.approve')->group(function () {
+            Route::get('/staff/clearance', [StaffClearanceController::class, 'index']);
+            Route::get('/staff/clearance/{clearanceRequest}', [StaffClearanceController::class, 'show']);
+            Route::post('/staff/clearance-items/{clearanceItem}/decide', [StaffClearanceController::class, 'decide']);
+        });
+
+        Route::middleware('permission:documents.issue')->group(function () {
+            Route::get('/registrar/dashboard', [RegistrarController::class, 'dashboard']);
         });
     });
 

@@ -1,6 +1,6 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Phase 9 fully complete (backend + frontend + live verification).
+Last updated: Phase 11 fully complete (backend + frontend + live verification).
 
 ## Repository audit finding (important)
 
@@ -36,8 +36,8 @@ source for seed data, once explicitly confirmed).
 | Course registration | ✓ | Phase 7 — see below. |
 | Lecturer/HOD portals | ✓ | Phase 8 (lecturer + results pipeline). Phase 9 (dedicated HOD dashboard, department students/staff/academics/reports, registration & result review UI) verified live end-to-end against a stub — see below. |
 | Examination & results | ✓ | Phase 8 — see below. |
-| Finance & payments | ✗ | Phase 12/13. |
-| Registrar/documents/clearance | ✗ | Phase 14/15/16. |
+| Finance & payments | ✓ | Phase 10 — fee structures, invoices, payment gateway abstraction (Paystack/Flutterwave/Korapay), webhook verification, refunds. Verified live end-to-end — see below. |
+| Registrar/documents/clearance | ✓ | Phase 11 — document self-service, staff-processed requests, public verification, 5-stage clearance pipeline, graduation gated on clearance. Verified live end-to-end — see below. |
 | Notifications/CMS | ✗ | Phase 17/18. |
 | SIWES/helpdesk | ✗ | Phase 19. |
 | Management dashboard | ✗ | Phase 20. |
@@ -391,13 +391,167 @@ in this sandbox.
   authorization, frontend, and verification are all done, not just the
   backend half from the prior session.
 
+## What Phase 10 added — Finance & Bursary (backend + frontend, fully closed)
+
+Payment gateway is **Korapay** (per Abee's correction), not Interswitch —
+the abstraction itself doesn't care which provider is configured, but the
+concrete third driver alongside Paystack/Flutterwave is `KorapayGateway`.
+
+- **Backend:** 7 migrations (`fee_structures`, `fee_items`,
+  `invoice_number_counters`, `invoices`, `invoice_items`, `payments`,
+  `financial_transactions` — exactly the spec's §32 Finance domain, no
+  more, no less) and matching models. Money is DECIMAL everywhere; no fee
+  amount is hardcoded anywhere in application code — every one comes from
+  a `FeeItem` an institution configures.
+  - **Payment gateway abstraction** (§21): `PaymentGatewayContract`
+    interface + `PaymentGatewayManager`, with real drivers for
+    **Paystack**, **Flutterwave**, and **Korapay** written against each
+    provider's actual documented API (untestable in this sandbox — no
+    outbound network access — but not stubs; each is flagged as needing
+    confirmation against a live secret key before production), plus a
+    genuinely functional **TestGateway** for dev/demo/manual-payment use.
+  - **`PaymentVerificationService`** is the one and only code path
+    allowed to mark a payment SUCCESSFUL and touch an invoice's balance —
+    row-locked, idempotent (a webhook firing twice, or racing a manual
+    "re-check", never double-credits), and rejects on gateway-reported
+    amount mismatch rather than trusting the caller. Refunds append a new
+    ledger row rather than editing the original payment (§35 — nothing
+    here is ever silently overwritten).
+  - `InvoiceGenerationService` resolves the best-matching `FeeStructure`
+    for a student's (session, programme, level) by specificity, and is
+    idempotent the same way `AdmissionConversionService` is — regenerating
+    against the same structure returns the existing invoice.
+  - `InvoiceNumberGenerator`/`PaymentReferenceGenerator` follow the same
+    locked-counter / collision-checked pattern as `MatricNumberGenerator`.
+  - New permissions `fee_structures.manage`, `invoices.manage`,
+    `invoices.view` (the spec's own §4 list only names `payments.*`, not
+    fee/invoice management) — Bursary Officer holds all of them; students
+    reach their own invoices via ownership, not a permission, same
+    pattern as course registrations/results.
+  - `/payments/webhook/{gateway}` is necessarily public (a gateway can't
+    hold a Sanctum session) — protected by each driver's own
+    `verifyWebhookSignature()` plus the fact that nothing downstream
+    trusts the webhook body itself, only what `verify()` gets back from
+    re-querying the gateway's own API.
+- **Frontend:** `/student/fees` (a student's own invoices, balances, and
+  a "Pay" flow — for the `test` gateway specifically, since there's no
+  live checkout page, a "Simulate Payment (dev/demo)" step exercises the
+  exact same signed-webhook → verify → apply pathway a real gateway
+  would use, via a new `/api/payments/simulate` Route Handler). A full
+  `/bursary/*` portal (dashboard, fee-structure creation with a dynamic
+  item builder, invoice generation/void, payment re-check/refund),
+  gated by `role:bursary_officer`. `/portal` now links into both for the
+  relevant roles.
+- **Known limitation, stated plainly:** invoice generation and the
+  Bursary "generate invoice" form take a raw numeric student ID — there's
+  no student search yet (that's Phase 22, Global Search), so this is
+  genuinely awkward to use today. Flagged in the UI copy itself rather
+  than hidden.
+- **Verified live, end-to-end**, same standard as Phase 9: `npm run
+  build` (clean) and `eslint` (clean) on every new/changed file; the core
+  `PaymentVerificationService` idempotency/mismatch/refund logic checked
+  against a Python stub mirroring the PHP exactly (full payment,
+  idempotent replay, partial-then-partial, amount-mismatch rejection,
+  gateway-failure, refund-reopens-balance — all pass); then a real `next
+  start` server against a Python stub reproducing Laravel's exact
+  envelope — logged in as both a student and a Bursary Officer and
+  confirmed the entire loop for real: initiate a payment → simulate the
+  webhook → status flips to SUCCESSFUL → invoice shows PARTIALLY_PAID/
+  PAID → Bursary sees the same payment and can refund it → refund
+  recorded. Also confirmed a non-Bursary session is redirected away from
+  `/bursary`.
+- One bug caught and fixed *during* this verification (not a
+  pre-existing one): the stub itself was initially missing `total_amount`
+  on fee structures, which the real `FeeStructureController::present()`
+  always computes — caught by the live render throwing, not silently
+  passed.
+ 
+## What Phase 11 added — Registrar, Documents & Clearance (backend + frontend, fully closed)
+
+- **Backend:** 6 migrations/models matching the spec's Documents+Clearance
+  domains (`document_templates`, `document_requests`,
+  `document_number_counters`, `issued_documents`, `clearance_requests`,
+  `clearance_items`). Deliberately no separate "graduation" table —
+  §32 doesn't list one, and Student already has a GRADUATED status
+  (Phase 6); graduation is that existing status-change endpoint, now
+  gated on a COMPLETED clearance rather than new infrastructure.
+  - **Instant vs. requested documents**: Admission Letter, Course
+    Registration Slip, Result Slip, and Payment Receipt are generated
+    immediately by `DocumentIssuanceService` from real existing records
+    (no student action needed beyond asking); Transcript, Statement of
+    Result, and Clearance Certificate go through a `DocumentRequest` a
+    Registrar processes (REQUESTED → READY/REJECTED → ISSUED). Every
+    `IssuedDocument.content` is a point-in-time JSON snapshot — never a
+    live join — so a later result correction can't silently rewrite a
+    document that already left the institution.
+  - **Verification codes are separate from document numbers** on
+    purpose: `/verify/{code}` (now wired to real data — was a Phase 3
+    placeholder) looks up by the random `verification_code`, and
+    `IssuedDocument::toPublicArray()` is the only thing the public route
+    can ever return — never the private `content` snapshot (§22).
+  - **Clearance** (`ClearanceService`): every request gets the spec's
+    fixed 5-stage pipeline (DEPARTMENT → LIBRARY → BURSARY → REGISTRY →
+    EXAMINATION) as 5 `ClearanceItem` rows; `ClearanceRequest.status` is
+    *derived* from its items (`recomputeStatus()`) and never set
+    directly by a controller, so it can't drift out of sync. A new
+    `ClearanceItemPolicy` (+ `ClearanceItem::STAGE_ROLES`) enforces that
+    each stage can only be decided by its owning role (an HOD can't
+    approve a BURSARY item), and folds in the same department-scoping
+    rule as `CourseRegistrationPolicy`/`ResultPolicy` for the DEPARTMENT
+    stage. `StudentController::updateStatus()` now refuses a transition
+    to GRADUATED without a COMPLETED clearance on record (§16).
+  - New permissions `clearance.approve`/`clearance.view`, assigned to
+    every stage-owning role (hod, library_officer, bursary_officer,
+    registrar, academic_officer).
+  - Caught and fixed during this phase, before it shipped: an initial
+    version of `StaffClearanceController::index()` filtered "which
+    requests touch my stage" *after* `paginate()`, which would have left
+    the pagination metadata (total/last_page) describing the unfiltered
+    set. Moved the filter into the SQL query (`whereHas`) before
+    pagination instead.
+- **Frontend:** `/student/documents` (generate instant documents,
+  request the staff-processed ones, see both lists) and
+  `/student/clearance` (status + start button). `/registrar` (dashboard +
+  document-request processing/issuance) gated by `role:registrar`. A
+  **shared** `/clearance` page — not tied to one role, gated by the
+  `clearance.approve` *permission* instead, since five different roles
+  own different stages of the same pipeline — that only renders a
+  decide action for stages the viewer's own role owns (the backend
+  policy is the real boundary; this is just so the UI doesn't offer a
+  button that would 403). `/verify/[code]` now shows real verification
+  results instead of the Phase 3 "not available yet" placeholder.
+  `/portal` links into all of the above for the relevant roles/permission.
+- **Known limitation, stated plainly:** no QR code image is generated
+  anywhere — verification works via the text code and `/verify/{code}`
+  URL only (§22 asks for "QR code" alongside verification code/URL). The
+  architecture supports adding it trivially (the verification URL is
+  already stable and public), but no QR image is rendered on an issued
+  document or the verification page yet. Flagged here rather than
+  quietly left out of this list.
+- **Verified live, end-to-end**, same standard as Phases 9–10: `npm run
+  build` (clean, all new routes present) and `eslint` (clean, after
+  fixing one unescaped-apostrophe lint error) on every new/changed file;
+  the clearance status-derivation logic (all-pending → in-progress →
+  completed, and "any single rejection anywhere forces REJECTED even
+  with everything else approved") and the graduation gate checked
+  against a Python stub mirroring the PHP exactly; then a real `next
+  start` server against a Python stub — as a student: generated an
+  admission letter and registration slip instantly, requested a
+  transcript, requested clearance, confirmed the status/stage list
+  rendered correctly; as the Registrar: dashboard rendered, processed the
+  transcript request to READY, issued it, confirmed the resulting
+  verification code resolves correctly on the *public* `/verify/[code]`
+  page; as a Library Officer: confirmed `/clearance` only offered a
+  decide action on the LIBRARY stage (not DEPARTMENT), decided it
+  APPROVED, and confirmed the student's own clearance page picked up the
+  change (PENDING → IN_PROGRESS) without needing a page they don't have
+  access to. Also confirmed a non-Registrar session is redirected away
+  from `/registrar`.
+
 ## Immediate next target
 
-**Phase 10 — Finance & Bursary**: fee structures, invoices, student
-balances, and the payment-gateway abstraction (Paystack/Flutterwave/
-Interswitch-agnostic) called for in §21/§13, including the webhook →
-server-side verification flow that must never trust a frontend payment
-response as final proof of payment. Per Abee's standing instruction as of
-this session, phases are now taken to full completion (backend + frontend
-+ verification) before moving on, rather than backend-first with frontend
-deferred to "next session."
+**Phase 12 — SIWES & Student Services**: SIWES placement records
+(organization, supervisor, dates, assessment) and a Helpdesk/support-ticket
+system (categories, priority, staff replies, attachments). Per the
+standing instruction as of Phase 9, this will be taken to full completion
+— backend, frontend, and live verification — before moving to Phase 13.

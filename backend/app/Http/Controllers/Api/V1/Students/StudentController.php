@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Students\UpdateStudentStatusRequest;
 use App\Http\Resources\StudentResource;
 use App\Http\Responses\ApiResponse;
+use App\Models\ClearanceRequest;
 use App\Models\Student;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
@@ -55,9 +56,22 @@ class StudentController extends Controller
     /**
      * Every status change is authorized (students.status.change permission,
      * enforced at the route level) and audited — never a silent update.
+     * Phase 11: transitioning to GRADUATED additionally requires a
+     * COMPLETED ClearanceRequest (§16 — graduation is gated on
+     * clearance, not just an admin's say-so).
      */
     public function updateStatus(UpdateStudentStatusRequest $request, Student $student, AuditLogger $audit)
     {
+        if ($request->string('status') === Student::STATUS_GRADUATED) {
+            $cleared = ClearanceRequest::where('student_id', $student->id)
+                ->where('status', ClearanceRequest::STATUS_COMPLETED)
+                ->exists();
+
+            if (! $cleared) {
+                return $this->fail('This student has no COMPLETED clearance on record — graduation requires clearance first.', [], 422);
+            }
+        }
+
         $old = $student->status;
         $student->update(['status' => $request->string('status')]);
 

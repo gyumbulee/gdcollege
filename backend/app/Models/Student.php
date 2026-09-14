@@ -67,4 +67,29 @@ class Student extends Model
     {
         return $this->hasMany(Result::class);
     }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function documentRequests(): HasMany
+    {
+        return $this->hasMany(DocumentRequest::class);
+    }
+
+    public function issuedDocuments(): HasMany
+    {
+        return $this->hasMany(IssuedDocument::class);
+    }
+
+    public function clearanceRequests(): HasMany
+    {
+        return $this->hasMany(ClearanceRequest::class);
+    }
 }

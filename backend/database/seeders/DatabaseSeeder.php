@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
             AcademicStructureSeeder::class,
             ResultConfigSeeder::class,
             DevSampleStaffSeeder::class,
+            FinanceSeeder::class,
+            DocumentTemplateSeeder::class,
             // Institution row seeder is added once official details are
             // confirmed (currently left null — see Phase 0/1 config).
         ]);

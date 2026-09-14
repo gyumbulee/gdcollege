@@ -13,74 +13,252 @@ use Illuminate\Support\Facades\Hash;
 /**
  * DEVELOPMENT / DEMO DATA ONLY.
  *
- * Creates one sample HOD (scoped, via role_user.scope_type/scope_id, to
- * the sample Computer Science department from AcademicStructureSeeder)
- * and one sample lecturer assigned to that department's sample course
- * offerings. Exists so Phase 9's department-scoped HOD authorization
- * (CourseRegistrationPolicy@approve/reject, ResultPolicy@review) has a
- * real account to exercise/verify against, and so the platform has the
- * "sample HOD"/"sample lecturers" seed data the spec calls for (§43).
+ * Creates development accounts for the institutional staff roles so the
+ * different staff portals and permission boundaries can be tested locally.
+ *
+ * Special handling:
+ * - HOD is scoped to the sample Computer Science department.
+ * - Lecturer is assigned to the sample Computer Science course offerings.
+ *
+ * The super administrator is intentionally NOT created here because it is
+ * already handled by DevSuperAdminSeeder.
  *
  * Change or remove before production — see Phase 25.
  */
 class DevSampleStaffSeeder extends Seeder
 {
+    private const PASSWORD = 'ChangeMe!12345';
+
     public function run(): void
     {
-        $department = Department::where('slug', 'computer-science-sample')->first();
+        /*
+         * ------------------------------------------------------------------
+         * Find sample Computer Science department.
+         * ------------------------------------------------------------------
+         *
+         * AcademicStructureSeeder runs before this seeder in DatabaseSeeder,
+         * so the department should already exist.
+         */
+        $department = Department::where(
+            'slug',
+            'computer-science-sample'
+        )->first();
 
-        if (! $department) {
-            // AcademicStructureSeeder hasn't run (or was changed) — nothing
-            // sensible to scope a sample HOD to, so skip quietly.
+        /*
+         * ------------------------------------------------------------------
+         * HOD
+         * ------------------------------------------------------------------
+         */
+        if ($department) {
+            $hod = User::updateOrCreate(
+                ['email' => 'hod.cs@gdcollegewase.test'],
+                [
+                    'name' => 'Dev HOD — Computer Science (Sample)',
+                    'password' => Hash::make(self::PASSWORD),
+                    'status' => 'active',
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            $this->assignRole(
+                $hod,
+                'hod'
+            );
+
+            /*
+             * HOD role must be department-scoped.
+             *
+             * departmentScopeIds() reads scope_type and scope_id directly
+             * from role_user.
+             */
+            $hodRole = Role::where('slug', 'hod')->first();
+
+            if ($hodRole) {
+                DB::table('role_user')->updateOrInsert(
+                    [
+                        'user_id' => $hod->id,
+                        'role_id' => $hodRole->id,
+                        'scope_type' => 'department',
+                        'scope_id' => $department->id,
+                    ],
+                    [
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+
+                /*
+                 * Keep the department convenience column synchronized.
+                 */
+                $department->update([
+                    'hod_user_id' => $hod->id,
+                ]);
+            }
+        }
+
+        /*
+         * ------------------------------------------------------------------
+         * Lecturer
+         * ------------------------------------------------------------------
+         */
+        if ($department) {
+            $lecturer = User::updateOrCreate(
+                ['email' => 'lecturer.cs@gdcollegewase.test'],
+                [
+                    'name' => 'Dev Lecturer — Computer Science (Sample)',
+                    'password' => Hash::make(self::PASSWORD),
+                    'status' => 'active',
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            $this->assignRole(
+                $lecturer,
+                'lecturer'
+            );
+
+            /*
+             * Assign lecturer to the sample Computer Science offerings.
+             */
+            CourseOffering::whereHas(
+                'programme',
+                fn ($query) => $query->where(
+                    'department_id',
+                    $department->id
+                )
+            )->update([
+                'lecturer_id' => $lecturer->id,
+            ]);
+        }
+
+        /*
+         * ------------------------------------------------------------------
+         * Admission Officer
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'admissions@gdcollegewase.test',
+            'Dev Admission Officer',
+            'admission_officer'
+        );
+
+        /*
+         * ------------------------------------------------------------------
+         * Academic Officer
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'academic@gdcollegewase.test',
+            'Dev Academic Officer',
+            'academic_officer'
+        );
+
+        /*
+         * ------------------------------------------------------------------
+         * Bursary Officer
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'bursary@gdcollegewase.test',
+            'Dev Bursary Officer',
+            'bursary_officer'
+        );
+
+        /*
+         * ------------------------------------------------------------------
+         * Registrar
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'registrar@gdcollegewase.test',
+            'Dev Registrar',
+            'registrar'
+        );
+
+        /*
+         * ------------------------------------------------------------------
+         * Management
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'management@gdcollegewase.test',
+            'Dev Management Officer',
+            'management'
+        );
+
+        /*
+         * ------------------------------------------------------------------
+         * Library Officer
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'library@gdcollegewase.test',
+            'Dev Library Officer',
+            'library_officer'
+        );
+
+        /*
+         * ------------------------------------------------------------------
+         * SIWES Coordinator
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'siwes@gdcollegewase.test',
+            'Dev SIWES Coordinator',
+            'siwes_coordinator'
+        );
+
+        /*
+         * ------------------------------------------------------------------
+         * ICT / System Administrator
+         * ------------------------------------------------------------------
+         */
+        $this->createStaff(
+            'ict@gdcollegewase.test',
+            'Dev ICT/System Administrator',
+            'ict_administrator'
+        );
+    }
+
+    /**
+     * Create or update a normal development staff account and assign
+     * its institutional role.
+     */
+    private function createStaff(
+        string $email,
+        string $name,
+        string $roleSlug
+    ): User {
+        $user = User::updateOrCreate(
+            ['email' => $email],
+            [
+                'name' => $name,
+                'password' => Hash::make(self::PASSWORD),
+                'status' => 'active',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        $this->assignRole($user, $roleSlug);
+
+        return $user;
+    }
+
+    /**
+     * Assign an institutional role without removing any other roles.
+     */
+    private function assignRole(
+        User $user,
+        string $roleSlug
+    ): void {
+        $role = Role::where('slug', $roleSlug)->first();
+
+        if (! $role) {
             return;
         }
 
-        $hod = User::updateOrCreate(
-            ['email' => 'hod.cs@gdcollegewase.test'],
-            [
-                'name' => 'Dev HOD — Computer Science (Sample)',
-                'password' => Hash::make('ChangeMe!12345'),
-                'status' => 'active',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        $hodRole = Role::where('slug', 'hod')->first();
-
-        if ($hodRole) {
-            // Scoped assignment: this is the row departmentScopeIds() reads.
-            // Not ->roles()->syncWithoutDetaching(), since that call can't
-            // set scope_type/scope_id — done directly against the pivot.
-            DB::table('role_user')->updateOrInsert(
-                ['user_id' => $hod->id, 'role_id' => $hodRole->id, 'scope_type' => 'department', 'scope_id' => $department->id],
-                ['updated_at' => now(), 'created_at' => now()]
-            );
-
-            // Department.hod_user_id is a fast-lookup convenience column
-            // (see its migration) — the role_user row above is the actual
-            // source of truth read by departmentScopeIds(); keep both in
-            // sync here since nothing else does yet.
-            $department->update(['hod_user_id' => $hod->id]);
-        }
-
-        $lecturer = User::updateOrCreate(
-            ['email' => 'lecturer.cs@gdcollegewase.test'],
-            [
-                'name' => 'Dev Lecturer — Computer Science (Sample)',
-                'password' => Hash::make('ChangeMe!12345'),
-                'status' => 'active',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        $lecturerRole = Role::where('slug', 'lecturer')->first();
-        if ($lecturerRole) {
-            $lecturer->roles()->syncWithoutDetaching([$lecturerRole->id]);
-        }
-
-        // Assign the sample lecturer to this department's sample offerings
-        // so the Phase 8 lecturer portal has something to load against.
-        CourseOffering::whereHas('programme', fn ($q) => $q->where('department_id', $department->id))
-            ->update(['lecturer_id' => $lecturer->id]);
+        $user->roles()->syncWithoutDetaching([
+            $role->id,
+        ]);
     }
 }

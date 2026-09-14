@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Application;
+use App\Models\ClearanceItem;
 use App\Models\CourseOffering;
 use App\Models\CourseRegistration;
 use App\Models\Result;
 use App\Policies\ApplicationPolicy;
+use App\Policies\ClearanceItemPolicy;
 use App\Policies\CourseOfferingPolicy;
 use App\Policies\CourseRegistrationPolicy;
 use App\Policies\ResultPolicy;
@@ -20,6 +22,7 @@ class AuthServiceProvider extends ServiceProvider
         CourseRegistration::class => CourseRegistrationPolicy::class,
         CourseOffering::class => CourseOfferingPolicy::class,
         Result::class => ResultPolicy::class,
+        ClearanceItem::class => ClearanceItemPolicy::class,
     ];
 
     public function boot(): void

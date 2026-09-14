@@ -33,11 +33,13 @@ class RolePermissionSeeder extends Seeder
     ];
 
     /**
-     * Flat permission slugs from the platform specification, plus one
-     * addition: `academic_structure.manage` for schools/departments/
-     * programmes/sessions/semesters/levels/course-types — the spec's own
-     * permission list (§4) doesn't name a granular slug per entity there,
-     * so a single management permission covers that group (Phase 2).
+     * Flat permission slugs from the platform specification, plus three
+     * additions: `academic_structure.manage` (Phase 2),
+     * `fee_structures.manage`/`invoices.manage`/`invoices.view` (Phase
+     * 10), and `clearance.approve`/`clearance.view` (Phase 11) — the
+     * spec's own permission list (§4) covers documents.issue/verify but
+     * not clearance decisions specifically, so this follows the same
+     * naming convention.
      */
     private array $permissions = [
         'students.view', 'students.create', 'students.update', 'students.status.change',
@@ -46,7 +48,9 @@ class RolePermissionSeeder extends Seeder
         'course_registrations.view', 'course_registrations.submit', 'course_registrations.approve',
         'results.view', 'results.enter', 'results.submit', 'results.review', 'results.verify', 'results.approve', 'results.publish', 'results.correct',
         'payments.view', 'payments.verify', 'payments.refund',
+        'fee_structures.manage', 'invoices.manage', 'invoices.view',
         'documents.issue', 'documents.verify',
+        'clearance.approve', 'clearance.view',
         'users.manage', 'roles.manage', 'permissions.manage', 'audit_logs.view',
         'academic_structure.manage',
     ];
@@ -54,13 +58,13 @@ class RolePermissionSeeder extends Seeder
     /** Role slug => permission slugs. */
     private array $assignments = [
         'admission_officer' => ['applications.view', 'applications.review', 'applications.shortlist', 'applications.admit', 'applications.reject'],
-        'academic_officer' => ['courses.view', 'results.view', 'results.verify', 'results.approve', 'results.publish', 'results.correct', 'academic_structure.manage'],
+        'academic_officer' => ['courses.view', 'results.view', 'results.verify', 'results.approve', 'results.publish', 'results.correct', 'academic_structure.manage', 'clearance.approve'],
         'lecturer' => ['courses.view', 'results.view', 'results.enter', 'results.submit'],
-        'hod' => ['students.view', 'course_registrations.view', 'course_registrations.approve', 'results.view', 'results.review'],
-        'bursary_officer' => ['payments.view', 'payments.verify', 'payments.refund'],
-        'registrar' => ['students.view', 'students.update', 'students.status.change', 'documents.issue', 'documents.verify', 'academic_structure.manage'],
-        'library_officer' => ['documents.verify'],
-        'management' => ['students.view', 'applications.view', 'payments.view', 'results.view', 'audit_logs.view'],
+        'hod' => ['students.view', 'course_registrations.view', 'course_registrations.approve', 'results.view', 'results.review', 'clearance.approve'],
+        'bursary_officer' => ['payments.view', 'payments.verify', 'payments.refund', 'fee_structures.manage', 'invoices.manage', 'invoices.view', 'clearance.approve'],
+        'registrar' => ['students.view', 'students.update', 'students.status.change', 'documents.issue', 'documents.verify', 'academic_structure.manage', 'clearance.approve', 'clearance.view'],
+        'library_officer' => ['documents.verify', 'clearance.approve'],
+        'management' => ['students.view', 'applications.view', 'payments.view', 'invoices.view', 'results.view', 'audit_logs.view'],
         'ict_administrator' => ['users.manage', 'roles.manage', 'permissions.manage', 'audit_logs.view'],
         // student / applicant / siwes_coordinator / super_administrator:
         // deliberately given no blanket permission-table entries here —
