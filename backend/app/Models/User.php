@@ -47,6 +47,11 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    public function applicant(): HasOne
+    {
+        return $this->hasOne(Applicant::class);
+    }
+
     public function student(): HasOne
     {
         return $this->hasOne(Student::class);
@@ -105,3 +110,4 @@ class User extends Authenticatable
             ->all();
     }
 }
+
