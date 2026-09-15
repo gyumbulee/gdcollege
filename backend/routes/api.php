@@ -41,6 +41,9 @@ use App\Http\Controllers\Api\V1\Results\LecturerResultController;
 use App\Http\Controllers\Api\V1\Results\ResultComponentController;
 use App\Http\Controllers\Api\V1\Results\StaffResultReviewController;
 use App\Http\Controllers\Api\V1\Results\StudentResultController;
+use App\Http\Controllers\Api\V1\Helpdesk\TicketController;
+use App\Http\Controllers\Api\V1\Siwes\StaffSiwesController;
+use App\Http\Controllers\Api\V1\Siwes\StudentSiwesController;
 use App\Http\Controllers\Api\V1\Students\StudentController;
 use App\Http\Controllers\Api\V1\Students\StudentEnrolmentController;
 use App\Http\Controllers\Api\V1\Students\StudentTransferController;
@@ -430,6 +433,39 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('permission:documents.issue')->group(function () {
             Route::get('/registrar/dashboard', [RegistrarController::class, 'dashboard']);
+        });
+
+        /*
+        |----------------------------------------------------------------
+        | SIWES & Student Services (Phase 12)
+        |----------------------------------------------------------------
+        | SIWES: student self-reports a placement (ownership-scoped, no
+        | permission needed); `siwes.manage` reviews/assesses. Helpdesk:
+        | any authenticated user can create/reply to their own tickets —
+        | TicketController checks ownership vs. helpdesk.view/manage
+        | inline rather than splitting into a separate staff controller,
+        | since almost every action is identical either way.
+        |----------------------------------------------------------------
+        */
+        Route::middleware('role:student')->prefix('student/siwes')->group(function () {
+            Route::get('/', [StudentSiwesController::class, 'index']);
+            Route::post('/', [StudentSiwesController::class, 'store']);
+        });
+
+        Route::middleware('permission:siwes.manage')->prefix('siwes')->group(function () {
+            Route::get('/', [StaffSiwesController::class, 'index']);
+            Route::get('/{siwesRecord}', [StaffSiwesController::class, 'show']);
+            Route::post('/{siwesRecord}/status', [StaffSiwesController::class, 'updateStatus']);
+            Route::post('/{siwesRecord}/assess', [StaffSiwesController::class, 'assess']);
+        });
+
+        Route::prefix('tickets')->group(function () {
+            Route::get('/', [TicketController::class, 'index']);
+            Route::post('/', [TicketController::class, 'store']);
+            Route::get('/{ticket}', [TicketController::class, 'show']);
+            Route::post('/{ticket}/reply', [TicketController::class, 'reply']);
+            Route::post('/{ticket}/status', [TicketController::class, 'updateStatus']);
+            Route::get('/{ticket}/messages/{messageId}/attachment', [TicketController::class, 'downloadAttachment']);
         });
     });
 

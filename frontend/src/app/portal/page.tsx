@@ -111,6 +111,54 @@ export default async function PortalPage() {
               <Link href="/student/results" className="text-sky-dark hover:underline">My results</Link>
             </li>
           )}
+          {session.roles.includes("hod") && (
+            <li>
+              <Link href="/hod" className="text-sky-dark hover:underline">HOD Portal — department dashboard, registrations &amp; results review</Link>
+            </li>
+          )}
+          {session.roles.includes("student") && (
+            <>
+              <li>
+                <Link href="/student/fees" className="text-sky-dark hover:underline">My Fees — invoices, balances &amp; payment</Link>
+              </li>
+              <li>
+                <Link href="/student/documents" className="text-sky-dark hover:underline">My Documents — generate slips/letters, request transcripts</Link>
+              </li>
+              <li>
+                <Link href="/student/clearance" className="text-sky-dark hover:underline">My Clearance — track your clearance stages</Link>
+              </li>
+              <li>
+                <Link href="/student/siwes" className="text-sky-dark hover:underline">My SIWES — submit &amp; track your placement</Link>
+              </li>
+            </>
+          )}
+          <li>
+            <Link href="/tickets" className="text-sky-dark hover:underline">
+              {can(session, "helpdesk.view") || can(session, "helpdesk.manage")
+                ? "Helpdesk — all support tickets"
+                : "Support — my tickets"}
+            </Link>
+          </li>
+          {can(session, "siwes.manage") && (
+            <li>
+              <Link href="/siwes" className="text-sky-dark hover:underline">SIWES Coordination — review placements &amp; record assessments</Link>
+            </li>
+          )}
+          {session.roles.includes("bursary_officer") && (
+            <li>
+              <Link href="/bursary" className="text-sky-dark hover:underline">Bursary Portal — fee structures, invoices &amp; payments</Link>
+            </li>
+          )}
+          {session.roles.includes("registrar") && (
+            <li>
+              <Link href="/registrar" className="text-sky-dark hover:underline">Registrar Portal — students, document requests &amp; issuance</Link>
+            </li>
+          )}
+          {can(session, "clearance.approve") && (
+            <li>
+              <Link href="/clearance" className="text-sky-dark hover:underline">Clearance — decide the stages assigned to your role</Link>
+            </li>
+          )}
           {!can(session, "users.manage") && !can(session, "students.view") && !can(session, "applications.view") && !can(session, "course_registrations.view") && !can(session, "results.enter") && (
             <li className="text-muted">Nothing module-specific yet — check back as later phases land.</li>
           )}

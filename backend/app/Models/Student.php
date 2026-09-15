@@ -92,4 +92,9 @@ class Student extends Model
     {
         return $this->hasMany(ClearanceRequest::class);
     }
+
+    public function siwesRecords(): HasMany
+    {
+        return $this->hasMany(SiwesRecord::class);
+    }
 }

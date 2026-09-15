@@ -522,7 +522,7 @@ concrete third driver alongside Paystack/Flutterwave is `KorapayGateway`.
   results instead of the Phase 3 "not available yet" placeholder.
   `/portal` links into all of the above for the relevant roles/permission.
 - **Known limitation, stated plainly:** no QR code image is generated
-  anywhere — verification works via the text code and `/verify/{code}`
+  anywhere — verification works via the text code and `/verify/{code}` 
   URL only (§22 asks for "QR code" alongside verification code/URL). The
   architecture supports adding it trivially (the verification URL is
   already stable and public), but no QR image is rendered on an issued
@@ -548,10 +548,129 @@ concrete third driver alongside Paystack/Flutterwave is `KorapayGateway`.
   access to. Also confirmed a non-Registrar session is redirected away
   from `/registrar`.
 
+## What Phase 12 added — SIWES & Student Services (backend + frontend, fully closed)
+
+- **Backend:** 3 migrations/models matching the spec's exact §32 domain
+  (`siwes_records`, `support_tickets`, `ticket_messages`) — no logbook
+  table, since the spec itself explicitly defers "detailed logbook
+  functionality" to a later phase; this is the placement record plus a
+  single overall assessment, not a weekly-entry logbook.
+  - **SIWES**: a student self-reports their placement (organization,
+    supervisor, dates) — ownership-scoped, no permission needed, same
+    pattern as invoices/results/documents. The `siwes_coordinator`
+    role now holds `siwes.manage`: reviewing placements, changing status
+    (PENDING/ACTIVE/COMPLETED/TERMINATED), and recording a 0–100
+    assessment score + remark.
+  - **Helpdesk**: one `TicketController` serves both sides (§28
+    explicitly covers students AND applicants, and staff) rather than
+    splitting into separate controllers — almost every action (view,
+    reply) is the same operation with a different authorization source
+    (`$ticket->user_id === Auth::id()` vs. holding `helpdesk.manage`),
+    checked inline rather than via route-level role middleware. A staff
+    reply on an OPEN ticket moves it to IN_PROGRESS; a requester's reply
+    to a WAITING ticket brings it back to OPEN — neither touches a
+    RESOLVED/CLOSED ticket, which only an explicit staff status change
+    can reopen. Attachments reuse Phase 4's exact private-disk +
+    ownership-checked-download pattern (`ApplicationDocumentController`)
+    — never a public URL.
+  - New permissions `siwes.manage`, `helpdesk.manage`, `helpdesk.view`,
+    assigned to `siwes_coordinator` and `registrar`/`ict_administrator`
+    respectively.
+- **Frontend:** `/student/siwes` (submit + track placement) and a shared
+  `/siwes` staff page (gated by the `siwes.manage` permission, not a
+  role — consistent with `/clearance`'s pattern). A shared `/tickets`
+  list + `/tickets/new` + `/tickets/[id]` thread view — the *same*
+  three routes serve both a student's own tickets and a staff member's
+  full queue, branching on `can(session, "helpdesk.view")`. `/portal`'s
+  "Available to you" list gained entries for all of the above.
+- **Known limitation, stated plainly:** the backend fully supports a
+  file attachment on a ticket reply (multipart upload, private disk,
+  ownership-checked download); the frontend reply form does not yet
+  send one — proxying `FormData` through a Next.js Route Handler is a
+  different code path from the JSON proxying used everywhere else.
+- **Verified live, end-to-end**, same standard as Phases 9–11: build +
+  lint clean; SIWES submit → coordinator review → assessment, and
+  ticket create → staff reply (auto OPEN→IN_PROGRESS) → resolve →
+  thread-render, both confirmed against a live `next start` + stub
+  server run.
+
+## Repository reconciliation (start of this session's regression check)
+
+Abee asked for a full regression check — "does everything work
+end-to-end," every portal route tested, **compared against what's
+actually on the repo** — before starting Phase 13 in a new chat. Doing
+that surfaced something important enough to document here rather than
+just fix quietly:
+
+**The live GitHub repo had diverged from this session's own working
+copy.** A fresh clone showed real, high-quality independent work already
+merged into `main` that this session had no knowledge of — most
+likely another Claude session (very possibly Claude Code, given the
+directness of the commits) working the exact gaps this document had
+been flagging as "backend-only, frontend deferred":
+
+- A full **Lecturer Portal** (`/lecturer/courses`, course detail, result
+  entry) — Phase 8's backend, frontend never built here.
+- **Student course registration** (`/student/registration`) and
+  **student results** (`/student/results`) — Phase 7/8 backends,
+  frontend never built here.
+- **General staff screens** for admissions, course-registration review,
+  results, and student records (`/staff/admissions`, `/staff/course-
+  registrations`, `/staff/results`, `/staff/students`) — Phases 4–8's
+  backends, frontend never built here.
+- A session-aware `SiteHeader`/`MobileNav` (shows "My Portal"/sign-out
+  when logged in, not just static "Student Login"/"Apply Now"), a fix
+  to `session.ts`'s cookie `secure` flag (env-driven `COOKIE_SECURE`
+  instead of tied to `NODE_ENV`, which this session had itself run into
+  friction with during live verification), a `User::applicant()`
+  relation, and broader CORS/dev-account seed coverage
+  (`DevSampleStaffSeeder` now creates one dev account per staff role,
+  not just HOD/lecturer).
+
+None of this conflicted with what this session had built — the two
+bodies of work touched almost entirely different files. Only a handful
+of shared files needed a real merge, not an overwrite: `routes/api.php`,
+`RolePermissionSeeder.php`, `DatabaseSeeder.php`, and `Student.php`
+needed this session's Phase 12 additions folded in cleanly (upstream
+was otherwise identical to this session's Phase 11 state on those
+files); `portal/page.tsx` needed an actual three-way merge, combining
+the other session's student-record panel with this session's
+HOD/Bursary/Registrar/Clearance/SIWES/Tickets links into one coherent
+`<ul>`. Everything else — `User.php`, `DevSampleStaffSeeder.php`,
+`cors.php`, `session.ts`, `SiteHeader.tsx`, `MobileNav.tsx`,
+`types/admissions.ts` — was left exactly as the other session left it;
+this session had no reason to revert genuine improvements.
+
+**The full regression check, run against that properly-merged tree**
+(not this session's isolated sandbox): `npm run build` and `eslint`
+clean across the *entire* combined codebase (75+ routes, both sessions'
+work together) with zero errors; every portal route — public pages,
+every authenticated page across every role (student, HOD, Bursary,
+Registrar, Library, SIWES Coordinator, Lecturer, Admission Officer,
+Academic Officer), every detail/nested page, every wrong-role redirect
+— checked live against a comprehensive stub server. Two real 500s
+turned up on first pass (`/student/registration`, `/lecturer/courses`)
+— both traced to gaps in this session's stub server's response shapes
+(missing a `programme` field on one endpoint, a wrong response shape
+on another), **not** bugs in either session's application code; fixed
+the stub, re-ran, and confirmed clean. Every route this session has
+ever built was re-verified clean in the same pass.
+
+**What this means going forward:** the zip-based delivery pattern this
+session has used since Phase 9 is no longer sufficient on its own —
+another party may have moved `main` forward between sessions. A fresh
+chat picking up Phase 13 should start by cloning the live repo (not
+trusting a locally-cached "cumulative" zip) before making changes, and
+this session is packaging its Phase 12 delivery as a diff against the
+*current* live repo state, not against its own earlier zips, to avoid
+silently reverting the other session's work.
+
 ## Immediate next target
 
-**Phase 12 — SIWES & Student Services**: SIWES placement records
-(organization, supervisor, dates, assessment) and a Helpdesk/support-ticket
-system (categories, priority, staff replies, attachments). Per the
-standing instruction as of Phase 9, this will be taken to full completion
-— backend, frontend, and live verification — before moving to Phase 13.
+**Phase 13 — Management & Reporting**: the executive dashboard (student/
+applicant/admission/revenue/academic-performance/graduation statistics),
+filterable by session/school/department/programme/level, with export —
+explicitly *not* automatic system-administration privileges for the
+Management role (§20/§30). Per the standing instruction as of Phase 9,
+this will be taken to full completion — backend, frontend, and live
+verification — before moving to Phase 14.
