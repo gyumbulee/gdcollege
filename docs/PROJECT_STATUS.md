@@ -1,6 +1,6 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Phase 13 fully complete (backend + frontend + verification).
+Last updated: Phase 14 (Security audit + Testing groundwork) complete.
 
 ## Repository audit finding (important)
 
@@ -43,7 +43,7 @@ source for seed data, once explicitly confirmed).
 | Management dashboard | ✓ | Phase 13 — see below. |
 | System administration | ✗ | Phase 21. |
 | Global search | ✗ | Phase 22. |
-| Security/audit hardening | ⚠ | Foundational conventions in place since Phase 0; HOD department scoping (a long-standing gap — see below) closed in Phase 9. Full hardening pass is Phase 23. |
+| Security/audit hardening | ⚠ | Foundational conventions in place since Phase 0; HOD department scoping closed in Phase 9; password reset/change, rate limiting, and a result-approval self-dealing gap closed in Phase 14 (see below). Deployment/monitoring/production hardening remains a separate future phase. |
 
 ## Known limitation: backend could not be installed/run in this environment
 
@@ -738,11 +738,111 @@ silently reverting the other session's work.
   new `/management/dashboard`, confirming the sibling-route naming
   decision above works as intended.
 
+## What Phase 14 added — Security audit + Testing groundwork (backend + frontend)
+
+Scoped deliberately: "Security, Testing & Production" as one phase covers
+things this sandbox genuinely cannot build (no PHP/Composer/MySQL/real
+server to deploy to — see the note at the top of this file). This phase
+covers what actually is code: a real security audit of the existing
+codebase, closing what it found, plus a first real automated test suite.
+Production deployment stays a distinct, separate future phase.
+
+- **Password reset + change — previously entirely missing.**
+  `AuthController` only ever had register/login/logout/me; Phase 1's own
+  "Password reset / Password change" requirement was never built. Added
+  `PasswordController` (`forgot`/`reset`/`change`) using Laravel's
+  built-in password broker — the `password_reset_tokens` table already
+  existed in the Phase 0 skeleton migration, unused until now, so no new
+  migration was needed. `forgot()` always returns the same message
+  whether or not the email exists (no account-enumeration leak).
+  `reset()` and `change()` both revoke tokens on success (reset revokes
+  every session; change revokes every session but the current one).
+  `User::sendPasswordResetNotification()` is overridden to send a new
+  `ResetPasswordNotification` linking to the Next.js frontend's
+  `/reset-password` page instead of Laravel's default Blade route (which
+  doesn't exist in this API-only app). New `FRONTEND_URL` config/env var.
+  Delivery goes through whatever `MAIL_MAILER` is configured — `log` in
+  dev writes the email (link included) to `storage/logs/laravel.log`,
+  enough to test the flow without real SMTP; real transactional email
+  stays Phase 17's concern and this notification needs no changes when
+  that lands. Audit-logged: `password.reset.requested`,
+  `password.reset.completed`, `password.changed`.
+  **Frontend:** `/forgot-password` and `/reset-password` pages, a
+  "Forgot your password?" link added to the login form, and
+  `/api/session/{forgot-password,reset-password}` proxy routes. The
+  authenticated `change-password` endpoint is backend-only for now — no
+  account/settings page exists anywhere in the frontend to put a change-
+  password form on (a gap of its own, out of scope for this phase; noted
+  here rather than silently built as new unrelated surface area).
+- **Rate limiting — previously entirely absent.** `grep -r RateLimiter
+  backend/app` returned nothing before this phase, despite §34 listing it
+  as a requirement from the start. Added three named limiters in
+  `AppServiceProvider`: `api` (60/min, general default across every
+  authenticated route, keyed by user ID), `auth` (6/min, keyed by IP
+  *and* the submitted email — so throttling one attacked account doesn't
+  also lock out everyone else behind the same NAT/campus IP — applied to
+  login/register/forgot-password/reset-password), and `public-lookup`
+  (30/min, IP-keyed, applied to admission-list search and public document
+  verification, both easy to script for enumeration).
+- **Real authorization gap found and closed:** nothing prevented the
+  lecturer who submitted a result from also approving it, if their
+  account separately held `results.approve`/`verify`/`publish` (e.g. a
+  dual-role account — plausible at a small college where the same person
+  might double as lecturer and exam officer). It only "worked" before
+  because the seeded `lecturer` role doesn't carry those permissions,
+  which is not the same as it being enforced. `ResultPolicy` now checks
+  the assigned lecturer at every stage (review/verify/approve/publish),
+  and `StaffResultReviewController` now actually calls `$this->authorize()`
+  for verify/approve/publish (it didn't before — only `review` was
+  policy-checked).
+- **Everything else in §42's "Verify that:" checklist was traced through
+  the actual policy code and confirmed already correct**, not assumed:
+  applicant cross-application access (`ApplicationPolicy`), HOD
+  department-scoping (`ChecksDepartmentScope`), student self-only result
+  access (`StudentResultController` derives the student from
+  `Auth::user()->student`, never a route parameter — cross-student access
+  isn't structurally possible there), and the Super Administrator-only
+  `Gate::before` bypass correctly excluding ICT/System Administrator.
+- **First real automated test suite.** `tests/Feature` had only the
+  framework's default `ExampleTest.php` before this — zero real tests
+  existed anywhere in 13 phases of business logic. Added
+  `tests/Feature/Authorization/CriticalAuthorizationTest.php`, one test
+  per line of §42's checklist (student cannot approve results; lecturer
+  cannot approve their own — including the dual-role case above; HOD
+  blocked from another department's result and confirmed allowed on their
+  own; applicant blocked from another applicant's application; a
+  student's results endpoint never returns another student's results;
+  ICT Administrator blocked from bypassing `results.approve`; Super
+  Administrator's deliberate bypass confirmed still works), plus two
+  "should succeed" sanity checks so the new policy logic isn't proven
+  correct only by everything returning 403.
+  **Not executed** — no PHP/Composer/MySQL in this sandbox, same
+  constraint as every other phase. Traced by hand against the actual
+  model fillables/migrations/policies instead (documented inline in the
+  test file). Run with `php artisan test --filter=CriticalAuthorizationTest`
+  against a real environment before trusting it.
+- **Verified so far:** full `next build` (Turbopack) + `eslint` clean
+  across the whole frontend including the two new pages, zero errors.
+  Password-reset flow live-verified end-to-end against a stub server:
+  forgot-password always returns the generic message; reset-password
+  succeeds with a valid token and returns a clean 422 with an invalid
+  one; the reset page's "missing token/email" state renders when neither
+  is present in the URL; the login page shows the new "Forgot your
+  password?" link. The PHP-side authorization test suite and the
+  ResultPolicy/rate-limiter changes could not be executed the same way —
+  see above.
+
 ## Immediate next target
 
-**Phase 14 — Security, Testing & Production** (the last phase on the coarse
-plan above; in practice this will likely split further, e.g. a dedicated
-System Administration phase for Phase 21's roles/permissions/settings UI
-and Global Search for Phase 22, both still ✗ in the status table). Before
-starting it, re-clone the live repo first — per the reconciliation note
-above, another session may have moved `main` again.
+Get **Phase 14's PHP-side changes and the new test suite actually run**
+against a real PHP/Composer/MySQL environment — this is the first phase
+where "verified" doesn't mean "traced by hand", and that gap should close
+as soon as possible. After that, continue toward the remaining phases:
+System Administration (Phase 21 — roles/permissions/settings UI),
+Global Search (Phase 22), Notifications/CMS (Phase 17/18), and eventual
+Production Deployment — none started yet. Before starting any of them,
+re-clone the live repo first — another session may have moved `main`
+again, and this session's own Phase 13 zip had not yet been applied to
+`main` when this session started (it had to re-apply that zip locally
+before starting Phase 14 — check whether `main` has caught up before
+building further on top of it).

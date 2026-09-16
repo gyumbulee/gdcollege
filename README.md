@@ -111,6 +111,17 @@ calculation service the results pipeline never had before. Verified live
 end-to-end, including confirming the new `/management/dashboard` and the
 pre-existing public `/management` leadership page coexist cleanly.
 
+**Phase 14 — Security audit + Testing groundwork:** password reset/change
+(previously entirely missing — see `docs/PROJECT_STATUS.md`), rate
+limiting (previously entirely absent), a real authorization gap closed
+(a dual-role lecturer could have approved their own submitted result),
+and the first automated test suite the repo has ever had, covering the
+spec's own §42 authorization checklist. This phase's PHP-side changes
+could not be executed in the sandbox they were written in (no PHP/
+Composer/MySQL there) — run `php artisan test` against a real environment
+before trusting them; the frontend half (password-reset pages) was
+verified live end-to-end and builds clean.
+
 **Starting a new chat to continue?** Read `docs/PROJECT_STATUS.md` first —
 it opens with a short primer on exactly that.
 

@@ -23,6 +23,11 @@ use Illuminate\Http\Request;
  * scope. verify/approve/publish belong to the institution-wide Academic
  * Officer role and stay unscoped, matching CourseRegistrationPolicy's
  * approach for registrations.
+ *
+ * Self-approval (Phase 14): every stage also checks ResultPolicy against
+ * the course offering's assigned lecturer, so no one can advance a
+ * result for a course they lectured — regardless of which permissions
+ * their account happens to hold.
  */
 class StaffResultReviewController extends Controller
 {
@@ -64,17 +69,23 @@ class StaffResultReviewController extends Controller
 
     public function verify(Result $result, AuditLogger $audit)
     {
+        $this->authorize('verify', $result);
+
         return $this->transition($result, Result::STATUS_REVIEWED, Result::STATUS_VERIFIED, 'verified_by', 'verified_at', $audit, 'results.verify');
     }
 
     public function approve(Result $result, AuditLogger $audit)
     {
+        $this->authorize('approve', $result);
+
         return $this->transition($result, Result::STATUS_VERIFIED, Result::STATUS_APPROVED, 'approved_by', 'approved_at', $audit, 'results.approve');
     }
 
     /** Publication is the terminal, locked state — visible to the student from here on. */
     public function publish(Result $result, AuditLogger $audit)
     {
+        $this->authorize('publish', $result);
+
         if ($result->status !== Result::STATUS_APPROVED) {
             return $this->fail('Only an APPROVED result can be published.', [], 422);
         }

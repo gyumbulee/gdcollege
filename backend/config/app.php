@@ -123,4 +123,18 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Frontend Base URL
+    |--------------------------------------------------------------------------
+    |
+    | Used to build links back into the Next.js app from backend-generated
+    | content — currently just the password-reset link (Phase 14). Laravel
+    | itself never renders a password-reset page; that lives in the
+    | frontend at /reset-password.
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+
 ];

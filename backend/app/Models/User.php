@@ -15,8 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use App\Notifications\ResetPasswordNotification;
 use Laravel\Sanctum\HasApiTokens;
-
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -108,6 +108,19 @@ class User extends Authenticatable
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
+    }
+
+    /**
+     * Overrides CanResetPassword's default, which links to a Laravel Blade
+     * route this API-only app doesn't have. Sends App\Notifications\
+     * ResetPasswordNotification instead, which links to the Next.js
+     * frontend's /reset-password page (Phase 14). Delivery still goes
+     * through whatever MAIL_MAILER is configured — 'log' in local/dev
+     * until Phase 17's real notification/email infrastructure exists.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }
 

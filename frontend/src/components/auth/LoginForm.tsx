@@ -69,6 +69,9 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:border-sky-dark"
         />
+        <a href="/forgot-password" className="mt-1 inline-block text-xs text-sky-dark hover:underline">
+          Forgot your password?
+        </a>
       </div>
 
       {error && (
