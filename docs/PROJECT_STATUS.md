@@ -1,6 +1,6 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Phase 11 fully complete (backend + frontend + live verification).
+Last updated: Phase 13 fully complete (backend + frontend + verification).
 
 ## Repository audit finding (important)
 
@@ -39,8 +39,8 @@ source for seed data, once explicitly confirmed).
 | Finance & payments | ✓ | Phase 10 — fee structures, invoices, payment gateway abstraction (Paystack/Flutterwave/Korapay), webhook verification, refunds. Verified live end-to-end — see below. |
 | Registrar/documents/clearance | ✓ | Phase 11 — document self-service, staff-processed requests, public verification, 5-stage clearance pipeline, graduation gated on clearance. Verified live end-to-end — see below. |
 | Notifications/CMS | ✗ | Phase 17/18. |
-| SIWES/helpdesk | ✗ | Phase 19. |
-| Management dashboard | ✗ | Phase 20. |
+| SIWES/helpdesk | ✓ | Phase 12 — see below. |
+| Management dashboard | ✓ | Phase 13 — see below. |
 | System administration | ✗ | Phase 21. |
 | Global search | ✗ | Phase 22. |
 | Security/audit hardening | ⚠ | Foundational conventions in place since Phase 0; HOD department scoping (a long-standing gap — see below) closed in Phase 9. Full hardening pass is Phase 23. |
@@ -665,12 +665,84 @@ this session is packaging its Phase 12 delivery as a diff against the
 *current* live repo state, not against its own earlier zips, to avoid
 silently reverting the other session's work.
 
+## What Phase 13 added — Management & Reporting (backend + frontend)
+
+- **Backend:** a `GpaCalculationService` — genuinely new, not present anywhere
+  before this phase. Results (Phase 8) only ever computed a per-course
+  total/grade; nothing rolled results up into a student GPA/CGPA. Implements
+  §14's formula (Quality Points = Grade Point × Credit Unit) over
+  PUBLISHED results only. Documented, not silently assumed: it does **not**
+  implement §14's "repeated/carryover course treatment" (no institutional
+  policy for which attempt counts has been supplied, so both attempts count
+  for now — the conservative reading, not the flattering one) and does not
+  feed §15 Academic Progression (still ✗ — no progression-status field on
+  `Student` yet, same reason).
+  `ManagementDashboardController` (`GET /management/dashboard`) —
+  institution-wide, filterable by academic_session_id/school_id/
+  department_id/programme_id/level_id (exactly §29's filter list, never
+  scoped to "my department" the way HOD's dashboard is): student counts
+  (total/active/by status/by level/by programme/by school), admissions
+  (applicants/applications/by status/by decision/trend by session), staff
+  (active staff total + lecturers in the current filter scope), finance
+  (invoiced/collected/outstanding + a 6-month revenue trend), academic
+  performance (average CGPA + grade distribution, via the new service), and
+  a graduation count. `ManagementReportController`
+  (`GET /management/reports/students.csv`) — CSV export of the same
+  filtered student roster, sharing one `ResolvesManagementFilters` trait
+  with the dashboard so the two can't silently drift apart. New
+  `reports.view` permission, granted only to `management` — routes are
+  gated by `permission:reports.view` rather than `role:management`
+  specifically so ICT/Super Administrator get the usual super-admin bypass
+  without a second role grant, and so Management's permission set stays
+  view-only (§29's "must not automatically receive system-administration
+  privileges").
+- **Frontend:** `/management/dashboard` — filter form (session/school/
+  department/programme/level selects), KPI cards, status/level/school/
+  programme breakdowns, a 6-month revenue trend, an average-CGPA card, and
+  a CSV export button. Deliberately `/management/dashboard`, not
+  `/management` — that URL is already the public "About → Management/
+  Leadership" page from Phase 3; both routes coexist as sibling Next.js
+  segments and both build cleanly (checked explicitly, since this was the
+  one real naming collision risk in the phase). The CSV export streams
+  through a new `/api/management/students-export` Route Handler (keeps the
+  bearer token server-side — the browser only ever gets a same-origin URL
+  it can navigate to for the download to trigger; no prior route in this
+  codebase proxied a binary/CSV stream rather than JSON, so this is a new
+  pattern here). `/portal`'s "Available to you" list gained an entry gated
+  on `can(session, "reports.view")`.
+- **Known gap, stated plainly:** "Graduation" is a KPI snapshot count only
+  (`total_graduated`), not a trend — `Student` has a `GRADUATED` status but
+  no `graduated_at` date or graduation-session link anywhere in the schema,
+  so a time series isn't derivable yet. That belongs to the not-yet-built
+  Graduation-processing feature (spec §16, distinct from the Clearance
+  workflow Phase 11 already built) — noted here rather than fabricated.
+- **Verified so far:** the GPA/CGPA weighted-average logic checked against
+  a Python stub mirroring the PHP exactly (`backend/tests/manual/` —
+  scratch verification, not part of the delivered zip, same as prior
+  phases); `next build` and `eslint` clean across the full frontend
+  (77 routes) including the two new `/management/dashboard` and
+  `/api/management/students-export` routes and the pre-existing
+  `/management` page, confirming no collision. Then live end-to-end
+  against a stub server standing in for the five Laravel endpoints this
+  phase calls: dashboard KPIs render correctly (all figures — student/
+  applicant/finance/CGPA/revenue-trend numbers — traced from stub
+  response through to rendered HTML); filters round-trip correctly
+  (`?school_id=1&academic_session_id=1` reflected in both the form's
+  initial state and the CSV export link); the CSV export streams with
+  the correct `Content-Type`/`Content-Disposition` headers when
+  authenticated and a clean 401 when not; a `student`-only session is
+  redirected away from `/management/dashboard` to `/portal` (wrong
+  permission), a fully unauthenticated request redirects to
+  `/student/login?next=%2Fmanagement%2Fdashboard`; the pre-existing
+  public `/management` leadership page still returns 200 alongside the
+  new `/management/dashboard`, confirming the sibling-route naming
+  decision above works as intended.
+
 ## Immediate next target
 
-**Phase 13 — Management & Reporting**: the executive dashboard (student/
-applicant/admission/revenue/academic-performance/graduation statistics),
-filterable by session/school/department/programme/level, with export —
-explicitly *not* automatic system-administration privileges for the
-Management role (§20/§30). Per the standing instruction as of Phase 9,
-this will be taken to full completion — backend, frontend, and live
-verification — before moving to Phase 14.
+**Phase 14 — Security, Testing & Production** (the last phase on the coarse
+plan above; in practice this will likely split further, e.g. a dedicated
+System Administration phase for Phase 21's roles/permissions/settings UI
+and Global Search for Phase 22, both still ✗ in the status table). Before
+starting it, re-clone the live repo first — per the reconciliation note
+above, another session may have moved `main` again.

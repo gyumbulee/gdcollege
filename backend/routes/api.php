@@ -33,6 +33,8 @@ use App\Http\Controllers\Api\V1\Hod\HodDashboardController;
 use App\Http\Controllers\Api\V1\Hod\HodReportController;
 use App\Http\Controllers\Api\V1\Hod\HodStaffController;
 use App\Http\Controllers\Api\V1\Hod\HodStudentController;
+use App\Http\Controllers\Api\V1\Management\ManagementDashboardController;
+use App\Http\Controllers\Api\V1\Management\ManagementReportController;
 use App\Http\Controllers\Api\V1\Registration\CourseRegistrationController;
 use App\Http\Controllers\Api\V1\Registry\RegistrarController;
 use App\Http\Controllers\Api\V1\Registration\StaffCourseRegistrationController;
@@ -466,6 +468,22 @@ Route::prefix('v1')->group(function () {
             Route::post('/{ticket}/reply', [TicketController::class, 'reply']);
             Route::post('/{ticket}/status', [TicketController::class, 'updateStatus']);
             Route::get('/{ticket}/messages/{messageId}/attachment', [TicketController::class, 'downloadAttachment']);
+        });
+
+        /*
+        |----------------------------------------------------------------
+        | Management & Reporting (Phase 13)
+        |----------------------------------------------------------------
+        | `reports.view` rather than `role:management` — see
+        | ManagementDashboardController's docblock: this keeps the usual
+        | super-admin bypass, and Management's permission set stays
+        | view-only in RolePermissionSeeder (§29's "no automatic
+        | system-administration privileges").
+        |----------------------------------------------------------------
+        */
+        Route::middleware('permission:reports.view')->prefix('management')->group(function () {
+            Route::get('/dashboard', [ManagementDashboardController::class, 'index']);
+            Route::get('/reports/students.csv', [ManagementReportController::class, 'exportStudents']);
         });
     });
 

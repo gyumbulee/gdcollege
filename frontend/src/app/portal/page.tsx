@@ -154,6 +154,11 @@ export default async function PortalPage() {
               <Link href="/registrar" className="text-sky-dark hover:underline">Registrar Portal — students, document requests &amp; issuance</Link>
             </li>
           )}
+          {can(session, "reports.view") && (
+            <li>
+              <Link href="/management/dashboard" className="text-sky-dark hover:underline">Management Dashboard — institution-wide KPIs &amp; reports</Link>
+            </li>
+          )}
           {can(session, "clearance.approve") && (
             <li>
               <Link href="/clearance" className="text-sky-dark hover:underline">Clearance — decide the stages assigned to your role</Link>

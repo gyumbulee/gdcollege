@@ -109,7 +109,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 curl http://localhost:8000/api/v1/auth/me \
   -H "Authorization: Bearer <token from above>"
-```
+``` 
 
 ### Why token auth, not cookie-based SPA auth
 

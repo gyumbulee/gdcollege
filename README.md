@@ -87,6 +87,30 @@ live end-to-end in one continuous run (lecturer entry through student
 seeing the published grade) — including confirming students see nothing
 before publication.
 
+**Phase 9 — HOD Portal (dedicated):** department dashboard, students,
+staff, academics, and reports screens, plus registration/result review
+UI — verified live end-to-end against a stub.
+
+**Phase 10 — Finance & Bursary:** fee structures, invoices, a payment
+gateway abstraction (Paystack/Flutterwave/Korapay), webhook-driven
+server-side verification, refunds — verified live end-to-end.
+
+**Phase 11 — Registrar, Documents & Clearance:** document self-service,
+staff-processed requests, public verification, a 5-stage clearance
+pipeline, graduation gated on clearance — verified live end-to-end.
+
+**Phase 12 — SIWES & Student Services:** student self-reported placements
+with coordinator review/assessment, and a shared helpdesk (student/
+applicant/staff on the same ticket thread) — verified live end-to-end.
+
+**Phase 13 — Management & Reporting:** an institution-wide executive
+dashboard (students/admissions/staff/finance/academic performance/
+graduation), filterable by session/school/department/programme/level,
+plus a CSV student-roster export — including a first-ever GPA/CGPA
+calculation service the results pipeline never had before. Verified live
+end-to-end, including confirming the new `/management/dashboard` and the
+pre-existing public `/management` leadership page coexist cleanly.
+
 **Starting a new chat to continue?** Read `docs/PROJECT_STATUS.md` first —
 it opens with a short primer on exactly that.
 
