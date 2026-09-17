@@ -39,7 +39,7 @@ class User extends Authenticatable
 
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class)->withTimestamps();
+        return $this->belongsToMany(Role::class)->withTimestamps()->withPivot('scope_type', 'scope_id');
     }
 
     public function auditLogs(): HasMany

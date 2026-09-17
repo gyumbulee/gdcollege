@@ -1,6 +1,6 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Phase 14 (Security audit + Testing groundwork) complete.
+Last updated: Phase 22 (Global Search) complete.
 
 ## Repository audit finding (important)
 
@@ -41,8 +41,8 @@ source for seed data, once explicitly confirmed).
 | Notifications/CMS | ✗ | Phase 17/18. |
 | SIWES/helpdesk | ✓ | Phase 12 — see below. |
 | Management dashboard | ✓ | Phase 13 — see below. |
-| System administration | ✗ | Phase 21. |
-| Global search | ✗ | Phase 22. |
+| System administration | ✓ | Phase 21 — see below. |
+| Global search | ✓ | Phase 22 — see below. |
 | Security/audit hardening | ⚠ | Foundational conventions in place since Phase 0; HOD department scoping closed in Phase 9; password reset/change, rate limiting, and a result-approval self-dealing gap closed in Phase 14 (see below). Deployment/monitoring/production hardening remains a separate future phase. |
 
 ## Known limitation: backend could not be installed/run in this environment
@@ -832,17 +832,142 @@ Production deployment stays a distinct, separate future phase.
   ResultPolicy/rate-limiter changes could not be executed the same way —
   see above.
 
+## What Phase 21 added — System Administration (backend + frontend)
+
+Scoped deliberately, same reasoning as Phase 14: covers the four sub-areas
+that were genuinely missing endpoints entirely, not a rebuild of the
+academic-structure CRUD that Phase 2 already built at the API level (that
+still has no staff-facing frontend — noted as a gap below, not silently
+folded into this phase).
+
+- **User management — previously entirely missing.** The only way to
+  create a staff account anywhere in this codebase was
+  `DatabaseSeeder` — no `users.manage`-gated endpoint existed, despite
+  that permission being defined and granted to `ict_administrator` since
+  Phase 1. New `UserManagementController` (index/store/show/update/
+  assignRole/removeRole) + `UserResource`. New accounts get a random,
+  never-exposed initial password — the admin who creates the account
+  never knows it, matching `PasswordController::forgot()`'s own
+  no-shared-secret reasoning from Phase 14. The new hire sets their own
+  password via the same "Forgot your password?" flow, so staff
+  onboarding didn't need an invite-email system of its own.
+  `User::roles()` gained `withPivot('scope_type', 'scope_id')` so
+  department-scoped role assignments (e.g. an HOD's department) can
+  actually be presented in a UI — previously only reachable via a raw
+  `DB::table('role_user')` query (`departmentScopeIds()`).
+- **Role/permission viewing + toggling — previously entirely missing.**
+  `roles.manage`/`permissions.manage` were defined and granted since
+  Phase 1 with no endpoint. New `RoleController`: lists roles with their
+  current permissions, lists all permissions, and toggles one permission
+  on one role. Deliberately does NOT support creating/deleting roles or
+  permissions — the set itself comes from the platform specification
+  (§4/§7), not something an admin UI should let an institution invent.
+  `super_administrator` is explicitly blocked from being edited here
+  (it bypasses the permission table entirely via `Gate::before` — toggling
+  its permissions would be inert and confusing). Toggling requires BOTH
+  `roles.manage` and `permissions.manage` — holding just one gets
+  read-only access.
+- **Audit log viewer — previously entirely missing**, despite every phase
+  since Phase 1 dutifully writing rows via `AuditLogger`. §35's "every
+  critical action must be traceable" had no way to actually trace
+  anything until now. New `AuditLogController` + `AuditLogResource`,
+  filterable by user/action-prefix/target type/date range.
+- **Institution settings — previously entirely missing**, despite Phase
+  0's own migration comment and `institution.config.ts`'s own docblock
+  both explicitly pointing here ("once Phase 21 exists, these can move to
+  database-backed institution settings"). New
+  `InstitutionSettingsController`: show/update the `institutions` singleton
+  row, including logo/banner upload to the `public` disk. The frontend
+  brand colour palette stays defined in code (compiled into Tailwind's
+  `@theme` at build time, which can't read a database) — only identity/
+  contact/asset fields became dynamically editable.
+- New `institution.manage` permission, granted to `ict_administrator`
+  alongside its existing `users.manage`/`roles.manage`/`permissions.manage`/
+  `audit_logs.view`. All four sub-areas gated by their own specific
+  permission under one `/admin` route prefix, not a blanket
+  `role:ict_administrator` check — `management` already holds
+  `audit_logs.view` alone and reaches exactly that slice.
+- **Found and fixed while auditing:** a duplicate `'private'` key in
+  `config/filesystems.php` (two identical entries — harmless, since PHP
+  silently used the second, but cleaned up regardless).
+- **Frontend:** `/admin` landing page (shows only the sections the signed-
+  in user actually holds permission for), `/admin/users` (create form +
+  role badges + suspend/reactivate), `/admin/roles` (permission checkboxes
+  per role), `/admin/audit-logs` (filterable table), `/admin/institution`
+  (settings form with logo/banner upload). File uploads use a bespoke
+  `fetch` with `FormData` rather than the shared `apiFetch` helper, same
+  reasoning as `ApplicationDocumentController`'s existing upload proxy
+  (`apiFetch` hardcodes a JSON `Content-Type`, which breaks a multipart
+  boundary). Portal link added, gated on holding any of the four
+  permissions.
+- **Verified so far:** full `next build` (Turbopack) + `eslint` clean
+  across the whole frontend, zero errors. Live end-to-end against a stub
+  server: the landing page shows exactly the sections a given permission
+  set grants (all four for an ICT Administrator stub, an explicit
+  "No administrative access" empty state for a student); `/admin/users`
+  redirects a student to `/admin`; each of the four pages renders its
+  stub data correctly; all five mutation proxy routes (create user,
+  update user, assign/remove role, toggle permission, update institution)
+  return the expected envelope. The backend controllers/policies/routes
+  could not be executed the same way — no PHP/Composer/MySQL in this
+  sandbox, same constraint as Phase 14; traced by hand against the actual
+  model fillables/migrations/existing controller conventions instead.
+
+## What Phase 22 added — Global Search (backend + frontend)
+
+- **Backend:** `GlobalSearchController` (`GET /search?q=...`), the first
+  cross-cutting search endpoint in the platform. No single permission
+  slug in the spec covers "search", so it's deliberately not gated by one
+  blanket permission the way every other route is — instead, each of the
+  four result categories (students/applications/payments/courses) is
+  only populated if the caller already holds that category's own view
+  permission (`students.view`/`applications.view`/`payments.view`/
+  `courses.view`), checked per-category inside the controller rather than
+  once at the route. A Lecturer (`courses.view` only) searching gets
+  course results and nothing else; Registry/Management, holding several
+  of those view permissions, see everything the spec describes in one
+  query. Matches on: student matric number/name/email/phone; application
+  number; payment reference or gateway reference; course code or title.
+  There's deliberately no separate "admission number" search — the
+  `admissions` table has never had one (an Admission carries only a
+  decision against an Application; see the model) — so admission results
+  surface through the same application-number match instead of a
+  fabricated field. Requires at least 2 characters; each category capped
+  at 10 results.
+- **Frontend:** a `/search` page — one box, four result sections that
+  simply don't render when empty (so a Lecturer's results page shows only
+  a "Courses" section, not three empty ones). Student results link to
+  `/staff/students/{id}`, applications to `/staff/admissions/{id}`;
+  payments link to `/bursary/payments` (the list — no per-payment detail
+  page exists yet anywhere in the app, staff or otherwise, so linking to
+  one would be a dead end); courses have no staff detail page at all yet
+  either, so they render as plain info with no link. Portal link added,
+  gated on holding any of the four category permissions.
+- **Verified so far:** full `next build` (Turbopack) + `eslint` clean,
+  zero errors. Live end-to-end against a stub server, including the one
+  thing most worth proving here: a "lecturer" stub token (holding only
+  `courses.view`) returns course results and nothing else, while a
+  "registrar" stub token (holding all four) returns all four categories
+  for the same query — confirming the per-category gating actually
+  changes what comes back, not just what's displayed. Also checked: a
+  1-character query shows "Keep typing" without hitting the API; no
+  query shows nothing (not an error state); unauthenticated requests
+  redirect to login. The backend controller itself could not be executed
+  the same way — no PHP/Composer/MySQL in this sandbox, same standing
+  constraint as Phases 14 and 21; traced by hand against the actual model
+  relations instead.
+
 ## Immediate next target
 
-Get **Phase 14's PHP-side changes and the new test suite actually run**
-against a real PHP/Composer/MySQL environment — this is the first phase
-where "verified" doesn't mean "traced by hand", and that gap should close
-as soon as possible. After that, continue toward the remaining phases:
-System Administration (Phase 21 — roles/permissions/settings UI),
-Global Search (Phase 22), Notifications/CMS (Phase 17/18), and eventual
-Production Deployment — none started yet. Before starting any of them,
-re-clone the live repo first — another session may have moved `main`
-again, and this session's own Phase 13 zip had not yet been applied to
-`main` when this session started (it had to re-apply that zip locally
-before starting Phase 14 — check whether `main` has caught up before
-building further on top of it).
+Same standing item as after Phase 14 and Phase 21, now covering three
+phases: **get Phases 14, 21, and 22's PHP-side changes actually run**
+against a real PHP/Composer/MySQL environment before building further on
+top of any of them — authorization/permission logic (Phase 14's
+`ResultPolicy`, Phase 21's role/permission endpoints, Phase 22's
+per-category search gating) is exactly where an untested assumption would
+matter most. After that, the remaining phases: Notifications/CMS
+(Phase 17/18), a staff-facing frontend for the academic-structure CRUD
+Phase 2 already built at the API level (backend exists, no UI), and
+eventual Production Deployment — none started yet. Before starting any of
+them, re-clone the live repo first — another session may have moved
+`main` again.

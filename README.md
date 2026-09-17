@@ -122,6 +122,23 @@ Composer/MySQL there) — run `php artisan test` against a real environment
 before trusting them; the frontend half (password-reset pages) was
 verified live end-to-end and builds clean.
 
+**Phase 21 — System Administration:** user management, role/permission
+viewing and toggling, an audit log viewer, and institution settings
+(with logo/banner upload) — all four were permission-defined and granted
+to `ict_administrator` since Phase 1, with zero endpoints behind any of
+them until now. Onboarding new staff reuses Phase 14's password-reset
+flow rather than a separate invite-email system. Same PHP-side caveat as
+Phase 14 — not executed against real PHP/Composer/MySQL yet; the frontend
+was verified live end-to-end and builds clean.
+
+**Phase 22 — Global Search:** one `/search` endpoint and page across
+students/applications/payments/courses, gated per-category (not by a
+single blanket permission — the spec has none for "search") against
+whichever view permissions the caller already holds. Live-verified that
+this actually changes results, not just their display: a stub Lecturer
+token gets course results only, a stub Registrar token gets all four
+categories for the same query. Same PHP-side caveat as Phases 14 and 21.
+
 **Starting a new chat to continue?** Read `docs/PROJECT_STATUS.md` first —
 it opens with a short primer on exactly that.
 

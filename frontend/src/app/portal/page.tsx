@@ -159,6 +159,16 @@ export default async function PortalPage() {
               <Link href="/management/dashboard" className="text-sky-dark hover:underline">Management Dashboard — institution-wide KPIs &amp; reports</Link>
             </li>
           )}
+          {(can(session, "users.manage") || can(session, "roles.manage") || can(session, "audit_logs.view") || can(session, "institution.manage")) && (
+            <li>
+              <Link href="/admin" className="text-sky-dark hover:underline">System Administration — users, roles, audit logs &amp; institution settings</Link>
+            </li>
+          )}
+          {(can(session, "students.view") || can(session, "applications.view") || can(session, "payments.view") || can(session, "courses.view")) && (
+            <li>
+              <Link href="/search" className="text-sky-dark hover:underline">Search — students, applications, payments &amp; courses</Link>
+            </li>
+          )}
           {can(session, "clearance.approve") && (
             <li>
               <Link href="/clearance" className="text-sky-dark hover:underline">Clearance — decide the stages assigned to your role</Link>

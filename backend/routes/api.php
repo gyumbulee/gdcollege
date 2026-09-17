@@ -34,7 +34,12 @@ use App\Http\Controllers\Api\V1\Hod\HodDashboardController;
 use App\Http\Controllers\Api\V1\Hod\HodReportController;
 use App\Http\Controllers\Api\V1\Hod\HodStaffController;
 use App\Http\Controllers\Api\V1\Hod\HodStudentController;
+use App\Http\Controllers\Api\V1\Admin\AuditLogController;
+use App\Http\Controllers\Api\V1\Admin\InstitutionSettingsController;
+use App\Http\Controllers\Api\V1\Admin\RoleController;
+use App\Http\Controllers\Api\V1\Admin\UserManagementController;
 use App\Http\Controllers\Api\V1\Management\ManagementDashboardController;
+use App\Http\Controllers\Api\V1\Search\GlobalSearchController;
 use App\Http\Controllers\Api\V1\Management\ManagementReportController;
 use App\Http\Controllers\Api\V1\Registration\CourseRegistrationController;
 use App\Http\Controllers\Api\V1\Registry\RegistrarController;
@@ -491,6 +496,63 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard', [ManagementDashboardController::class, 'index']);
             Route::get('/reports/students.csv', [ManagementReportController::class, 'exportStudents']);
         });
+
+        /*
+        |----------------------------------------------------------------
+        | System Administration (Phase 21)
+        |----------------------------------------------------------------
+        | All four sub-areas were permission-defined and granted to
+        | ict_administrator since Phase 1 with no endpoint anywhere that
+        | used them. Kept as one prefix, but each sub-area is gated by
+        | its own specific permission (not a blanket `role:ict_administrator`)
+        | so any role holding just one of these — e.g. `management` already
+        | holds `audit_logs.view` — reaches exactly that slice and nothing
+        | more.
+        |----------------------------------------------------------------
+        */
+        Route::prefix('admin')->group(function () {
+            Route::middleware('permission:users.manage')->prefix('users')->group(function () {
+                Route::get('/', [UserManagementController::class, 'index']);
+                Route::post('/', [UserManagementController::class, 'store']);
+                Route::get('/{user}', [UserManagementController::class, 'show']);
+                Route::patch('/{user}', [UserManagementController::class, 'update']);
+                Route::post('/{user}/roles', [UserManagementController::class, 'assignRole']);
+                Route::delete('/{user}/roles/{role}', [UserManagementController::class, 'removeRole']);
+            });
+
+            Route::middleware('permission:roles.manage')->group(function () {
+                Route::get('/roles', [RoleController::class, 'index']);
+                Route::get('/roles/{role}', [RoleController::class, 'show']);
+                Route::get('/permissions', [RoleController::class, 'permissions']);
+
+                // Toggling what a role can do needs BOTH permissions —
+                // roles.manage alone only earns read access here.
+                Route::middleware('permission:permissions.manage')
+                    ->post('/roles/{role}/permissions/{permission}/toggle', [RoleController::class, 'togglePermission']);
+            });
+
+            Route::middleware('permission:audit_logs.view')->prefix('audit-logs')->group(function () {
+                Route::get('/', [AuditLogController::class, 'index']);
+                Route::get('/{auditLog}', [AuditLogController::class, 'show']);
+            });
+
+            Route::middleware('permission:institution.manage')->prefix('institution')->group(function () {
+                Route::get('/', [InstitutionSettingsController::class, 'show']);
+                Route::post('/', [InstitutionSettingsController::class, 'update']);
+            });
+        });
+
+        /*
+        |----------------------------------------------------------------
+        | Global Search (Phase 22)
+        |----------------------------------------------------------------
+        | No single permission slug in the spec covers "search" — gated
+        | per-category inside the controller against students.view/
+        | applications.view/payments.view/courses.view instead of a
+        | blanket permission here. See GlobalSearchController's docblock.
+        |----------------------------------------------------------------
+        */
+        Route::get('/search', [GlobalSearchController::class, 'index']);
     });
 
     // Module routes for Phase 4+ (applications, students, results, ...) are
