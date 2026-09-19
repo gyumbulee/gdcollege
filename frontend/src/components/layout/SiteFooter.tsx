@@ -54,6 +54,16 @@ export function SiteFooter() {
                 Verify a Document
               </Link>
             </li>
+            <li>
+              <Link href="/downloads" className="text-white/60 hover:text-white">
+                Downloads
+              </Link>
+            </li>
+            <li>
+              <Link href="/faq" className="text-white/60 hover:text-white">
+                FAQs
+              </Link>
+            </li>
           </ul>
         </div>
 

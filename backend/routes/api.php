@@ -49,7 +49,15 @@ use App\Http\Controllers\Api\V1\Results\LecturerResultController;
 use App\Http\Controllers\Api\V1\Results\ResultComponentController;
 use App\Http\Controllers\Api\V1\Results\StaffResultReviewController;
 use App\Http\Controllers\Api\V1\Results\StudentResultController;
+use App\Http\Controllers\Api\V1\Cms\AnnouncementController;
+use App\Http\Controllers\Api\V1\Cms\DownloadController;
+use App\Http\Controllers\Api\V1\Cms\EventController;
+use App\Http\Controllers\Api\V1\Cms\FaqController;
+use App\Http\Controllers\Api\V1\Cms\GalleryController;
+use App\Http\Controllers\Api\V1\Cms\PageController;
+use App\Http\Controllers\Api\V1\Cms\PostController;
 use App\Http\Controllers\Api\V1\Helpdesk\TicketController;
+use App\Http\Controllers\Api\V1\Notifications\NotificationController;
 use App\Http\Controllers\Api\V1\Siwes\StaffSiwesController;
 use App\Http\Controllers\Api\V1\Siwes\StudentSiwesController;
 use App\Http\Controllers\Api\V1\Students\StudentController;
@@ -122,6 +130,27 @@ Route::prefix('v1')->group(function () {
     |----------------------------------------------------------------------
     */
     Route::middleware('throttle:public-lookup')->get('/documents/verify/{code}', [PublicDocumentVerificationController::class, 'show']);
+
+    /*
+    |----------------------------------------------------------------------
+    | Public CMS content (Phase 17/18)
+    |----------------------------------------------------------------------
+    | §27: "Public content should not require developer intervention for
+    | normal updates." Every one of these reads PUBLISHED-only rows —
+    | draft content never reaches an unauthenticated request, regardless
+    | of what the staff-side /admin/cms endpoints below can see.
+    |----------------------------------------------------------------------
+    */
+    Route::get('/pages/{slug}', [PageController::class, 'publicShow']);
+    Route::get('/posts', [PostController::class, 'publicIndex']);
+    Route::get('/posts/{slug}', [PostController::class, 'publicShow']);
+    Route::get('/events', [EventController::class, 'publicIndex']);
+    Route::get('/events/{slug}', [EventController::class, 'publicShow']);
+    Route::get('/galleries', [GalleryController::class, 'publicIndex']);
+    Route::get('/galleries/{slug}', [GalleryController::class, 'publicShow']);
+    Route::get('/downloads', [DownloadController::class, 'publicIndex']);
+    Route::get('/faqs', [FaqController::class, 'publicIndex']);
+    Route::get('/announcements', [AnnouncementController::class, 'publicIndex']);
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -553,6 +582,55 @@ Route::prefix('v1')->group(function () {
         |----------------------------------------------------------------
         */
         Route::get('/search', [GlobalSearchController::class, 'index']);
+
+        /*
+        |----------------------------------------------------------------
+        | Notifications (Phase 17)
+        |----------------------------------------------------------------
+        | Every signed-in user's own list — applicant, student, or staff
+        | alike. No permission gate: NotificationController always scopes
+        | to Auth::id(), so there's nothing broader to gate.
+        |----------------------------------------------------------------
+        */
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [NotificationController::class, 'index']);
+            Route::post('/{notification}/read', [NotificationController::class, 'markRead']);
+            Route::post('/read-all', [NotificationController::class, 'markAllRead']);
+        });
+
+        /** §26 — resolved against the current signed-in user's own audience (see AnnouncementController::mine). */
+        Route::get('/announcements/mine', [AnnouncementController::class, 'mine']);
+
+        /*
+        |----------------------------------------------------------------
+        | CMS Administration (Phase 17/18)
+        |----------------------------------------------------------------
+        | Every write here requires cms.manage. Announcements' authoring
+        | side sits alongside the CMS content types rather than under
+        | /notifications, since publishing one is what triggers the fan-
+        | out notification, not the notifications list itself.
+        |----------------------------------------------------------------
+        */
+        Route::middleware('permission:cms.manage')->prefix('admin/cms')->group(function () {
+            Route::apiResource('pages', PageController::class)->parameters(['pages' => 'page']);
+
+            Route::apiResource('posts', PostController::class)->parameters(['posts' => 'post']);
+            Route::apiResource('events', EventController::class)->parameters(['events' => 'event']);
+            Route::apiResource('faqs', FaqController::class)->only(['store', 'update', 'destroy'])->parameters(['faqs' => 'faq']);
+            Route::get('/faqs', [FaqController::class, 'index']);
+
+            Route::apiResource('downloads', DownloadController::class)->only(['index', 'store', 'destroy']);
+
+            Route::apiResource('galleries', GalleryController::class)->parameters(['galleries' => 'gallery']);
+            Route::post('/galleries/{gallery}/items', [GalleryController::class, 'addItem']);
+            Route::delete('/galleries/{gallery}/items/{item}', [GalleryController::class, 'removeItem']);
+
+            Route::get('/announcements', [AnnouncementController::class, 'index']);
+            Route::post('/announcements', [AnnouncementController::class, 'store']);
+            Route::patch('/announcements/{announcement}', [AnnouncementController::class, 'update']);
+            Route::post('/announcements/{announcement}/publish', [AnnouncementController::class, 'publish']);
+            Route::post('/announcements/{announcement}/archive', [AnnouncementController::class, 'archive']);
+        });
     });
 
     // Module routes for Phase 4+ (applications, students, results, ...) are

@@ -10,6 +10,7 @@ use App\Models\Admission;
 use App\Models\Application;
 use App\Services\AdmissionConversionService;
 use App\Services\AuditLogger;
+use App\Services\NotificationDispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -85,7 +86,7 @@ class StaffApplicationController extends Controller
      * stale duplicate rows — the audit log, not row history, is the trail
      * of who decided what and when.
      */
-    public function decide(DecisionRequest $request, Application $application, AuditLogger $audit)
+    public function decide(DecisionRequest $request, Application $application, AuditLogger $audit, NotificationDispatcher $notifications)
     {
         if (! in_array($application->status, [
             Application::STATUS_UNDER_REVIEW, Application::STATUS_SHORTLISTED, Application::STATUS_ON_HOLD,
@@ -119,6 +120,21 @@ class StaffApplicationController extends Controller
             null,
             ['decision' => $request->input('decision'), 'reason' => $request->input('decision_reason')]
         );
+
+        $application->loadMissing('applicant');
+        if ($application->applicant?->user_id) {
+            $notifications->toUser(
+                $application->applicant->user_id,
+                'admissions.decision',
+                'Your admission decision is ready',
+                match ($request->string('decision')->value()) {
+                    'ADMIT' => 'Congratulations — you have been admitted.',
+                    'HOLD' => 'Your application has been placed on hold.',
+                    default => 'A decision has been made on your application.',
+                },
+                '/portal'
+            );
+        }
 
         return $this->success(new ApplicationResource($application->fresh(self::WITH)), 'Decision recorded.');
     }

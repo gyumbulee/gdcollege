@@ -1,6 +1,6 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Phase 22 (Global Search) complete.
+Last updated: Phase 17/18 (Notifications & CMS) complete.
 
 ## Repository audit finding (important)
 
@@ -38,7 +38,7 @@ source for seed data, once explicitly confirmed).
 | Examination & results | ✓ | Phase 8 — see below. |
 | Finance & payments | ✓ | Phase 10 — fee structures, invoices, payment gateway abstraction (Paystack/Flutterwave/Korapay), webhook verification, refunds. Verified live end-to-end — see below. |
 | Registrar/documents/clearance | ✓ | Phase 11 — document self-service, staff-processed requests, public verification, 5-stage clearance pipeline, graduation gated on clearance. Verified live end-to-end — see below. |
-| Notifications/CMS | ✗ | Phase 17/18. |
+| Notifications/CMS | ✓ | Phase 17/18 — see below. |
 | SIWES/helpdesk | ✓ | Phase 12 — see below. |
 | Management dashboard | ✓ | Phase 13 — see below. |
 | System administration | ✓ | Phase 21 — see below. |
@@ -957,17 +957,92 @@ folded into this phase).
   constraint as Phases 14 and 21; traced by hand against the actual model
   relations instead.
 
+## What Phase 17/18 added — Notifications & CMS (backend + frontend)
+
+Genuinely the largest single-session addition so far — nine new tables,
+none of which existed before this phase.
+
+- **Notifications (§25), in-app only** — the spec explicitly scopes this
+  phase to in-app; email/SMS delivery stays a deliberate future gap, not
+  an oversight. `NotificationDispatcher` service, wired into 3 of the
+  spec's 8 listed trigger events: admission decision (`StaffApplicationController::decide`),
+  result published (`StaffResultReviewController::publish`), payment
+  confirmed (`PaymentVerificationService::verifyAndApply`). The other
+  five (registration opened/approved, clearance update, document ready)
+  follow the exact same one-line `$dispatcher->toUser(...)` call at their
+  own existing "this just happened" point in the code — mechanical to
+  add, explicitly not done, not silently left for someone to discover
+  missing. `NotificationController` (list/mark-read/mark-all-read,
+  always scoped to `Auth::id()`) + a `/notifications` frontend page +
+  an unread-count badge on `/portal`.
+- **Announcements (§26)** — full CRUD, a `publish()` action that's the
+  only thing that actually notifies anyone (a draft never does), and a
+  `mine()` endpoint that resolves ALL/STUDENTS/STAFF/SCHOOL/DEPARTMENT/
+  PROGRAMME/LEVEL audience targeting against the *current* signed-in
+  user — not a generic public list. A Level II Computer Science student
+  never sees an announcement targeted at Level I Mass Communication.
+  Backend `mine()` exists and works; no frontend section reads from it
+  yet (the homepage's public feed and the notification feed cover the
+  common cases) — noted as a real remaining gap, not built.
+- **CMS (§27)** — Pages, Posts (News), Events, FAQs, Downloads, Galleries.
+  Every type: public reads (published-only, unauthenticated) + `cms.manage`-
+  gated staff writes, cover-image/file uploads to the `public` disk with
+  computed URL accessors (`cover_image_url`/`image_url`/`file_url`) so the
+  frontend never builds storage paths itself. Shared slug-generation trait
+  so admins type a title, not a URL. New `cms.manage` permission, granted
+  to `registrar` and `ict_administrator`.
+- **A real validation bug found and fixed while building this**:
+  `PostRequest`/`EventRequest`/`GalleryRequest`/`PageRequest`/`FaqRequest`
+  originally marked `title`/`content`/`starts_at` etc. as unconditionally
+  `required` — correct for create, but it would have rejected the
+  partial "just toggle status to PUBLISHED" PATCH the publish buttons
+  send, since Laravel's `required` (without `sometimes`) demands the
+  field be present on every request using that FormRequest, not just
+  create. Changed every one to `sometimes|required` throughout.
+- **The cleanup Abee asked for explicitly**: swept every public-facing
+  page for "Phase N" / "coming later" language. Found and fixed real
+  stale content beyond just copy — `frontend/src/app/portal/page.tsx`
+  had a line literally reading "User & role management (Phase 21) — not
+  built yet" sitting right next to the real, working Admin link (Phase
+  21 shipped two phases ago; nobody had removed the placeholder). Also
+  replaced the portal's brittle "nothing module-specific" fallback,
+  which only checked 5 of roughly 15 permission gates in use, with a
+  single computed `hasAnyModule` flag covering all of them. `contact`
+  and `admissions` pages lost their phase-number references too. Every
+  CMS-backed public page (news, events, gallery, downloads, the
+  homepage's announcement feed, and a new `/faq` page) now reads real
+  data instead of a static "once the CMS is live" placeholder.
+- **Known, stated gaps**: 5 of 8 notification triggers unwired (see
+  above); announcement audience targeting for SCHOOL/DEPARTMENT/
+  PROGRAMME/LEVEL requires typing a raw numeric ID in the admin form —
+  no cascading dropdown, since building one needs the same schools/
+  departments/programmes/levels lookups the academic-structure admin
+  frontend (still not built — see below) would also need, and doing it
+  once there rather than twice here is the better use of a future
+  session; no `mine()` frontend section (noted above); Pages have no
+  in-place edit UI, only create + delete (their `update()` endpoint
+  exists and works, just isn't wired to a form yet).
+- **Verified so far**: full `next build` (Turbopack) + `eslint` clean,
+  zero errors, 175 routes. Live end-to-end against a stub server: every
+  public CMS page (news list+detail, events list+detail, gallery,
+  downloads, FAQ, the homepage announcement feed) renders real data;
+  `/notifications` shows unread count and both read/unread items
+  correctly styled; the portal's unread badge renders; `/admin/cms`
+  shows its sections to an ICT Administrator stub and redirects a
+  student; the FAQ create proxy, the mark-read proxy, and the mark-all-
+  read proxy all round-trip correctly. The backend controllers/policies
+  themselves could not be executed the same way — no PHP/Composer/MySQL
+  in this sandbox, same standing constraint as Phases 14/21/22; traced
+  by hand against the actual model fillables/migrations instead.
+
 ## Immediate next target
 
-Same standing item as after Phase 14 and Phase 21, now covering three
-phases: **get Phases 14, 21, and 22's PHP-side changes actually run**
-against a real PHP/Composer/MySQL environment before building further on
-top of any of them — authorization/permission logic (Phase 14's
-`ResultPolicy`, Phase 21's role/permission endpoints, Phase 22's
-per-category search gating) is exactly where an untested assumption would
-matter most. After that, the remaining phases: Notifications/CMS
-(Phase 17/18), a staff-facing frontend for the academic-structure CRUD
-Phase 2 already built at the API level (backend exists, no UI), and
-eventual Production Deployment — none started yet. Before starting any of
-them, re-clone the live repo first — another session may have moved
-`main` again.
+Same standing item as after Phase 14, 21, and 22, now covering four
+phases: **get Phases 14, 21, 22, and 17/18's PHP-side changes actually
+run** against a real PHP/Composer/MySQL environment before building
+further on top of any of them. After that: a staff-facing frontend for
+the academic-structure CRUD Phase 2 already built at the API level
+(backend exists, no UI — and would also unlock proper dropdowns for
+announcement audience targeting, see above), and eventual Production
+Deployment — neither started yet. Before starting either, re-clone the
+live repo first — another session may have moved `main` again.

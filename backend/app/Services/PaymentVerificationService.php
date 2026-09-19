@@ -24,6 +24,7 @@ class PaymentVerificationService
     public function __construct(
         private readonly PaymentGatewayManager $gateways,
         private readonly AuditLogger $audit,
+        private readonly NotificationDispatcher $notifications,
     ) {
     }
 
@@ -93,6 +94,16 @@ class PaymentVerificationService
             $this->applyToInvoice($payment);
 
             $this->audit->log('payments.verify', $payment, $old, $payment->only(['status', 'gateway_reference']));
+
+            if ($payment->student?->user_id) {
+                $this->notifications->toUser(
+                    $payment->student->user_id,
+                    'payments.confirmed',
+                    'Payment confirmed',
+                    'Your payment of ₦'.number_format((float) $payment->amount, 2).' has been confirmed.',
+                    '/student/fees'
+                );
+            }
 
             return $payment;
         });

@@ -139,6 +139,20 @@ this actually changes results, not just their display: a stub Lecturer
 token gets course results only, a stub Registrar token gets all four
 categories for the same query. Same PHP-side caveat as Phases 14 and 21.
 
+**Phase 17/18 — Notifications & CMS:** nine new tables, none of which
+existed before. In-app notifications wired into 3 of the spec's 8 listed
+trigger events (admission decision, result published, payment confirmed —
+the rest are the same mechanical pattern, not silently skipped);
+Announcements with real per-user audience targeting; a full CMS (Pages,
+News, Events, FAQs, Downloads, Galleries) with public reads and
+`cms.manage`-gated staff writes. Also swept every public page for stale
+"Phase N" / "coming later" placeholder language — including a genuinely
+wrong line in the portal claiming System Administration "not built yet"
+two phases after it shipped — and fixed a real validation bug (several
+CMS FormRequests would have rejected their own publish-toggle button's
+partial PATCH). Same PHP-side caveat as Phases 14, 21, and 22; the
+frontend was verified live end-to-end and builds clean at 175 routes.
+
 **Starting a new chat to continue?** Read `docs/PROJECT_STATUS.md` first —
 it opens with a short primer on exactly that.
 

@@ -7,6 +7,7 @@ use App\Http\Resources\ResultResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Result;
 use App\Services\AuditLogger;
+use App\Services\NotificationDispatcher;
 use Illuminate\Http\Request;
 
 /**
@@ -82,7 +83,7 @@ class StaffResultReviewController extends Controller
     }
 
     /** Publication is the terminal, locked state — visible to the student from here on. */
-    public function publish(Result $result, AuditLogger $audit)
+    public function publish(Result $result, AuditLogger $audit, NotificationDispatcher $notifications)
     {
         $this->authorize('publish', $result);
 
@@ -92,6 +93,17 @@ class StaffResultReviewController extends Controller
 
         $result->update(['status' => Result::STATUS_PUBLISHED, 'published_at' => now()]);
         $audit->log('results.publish', $result);
+
+        $result->loadMissing(['student', 'courseOffering.course']);
+        if ($result->student?->user_id) {
+            $notifications->toUser(
+                $result->student->user_id,
+                'results.published',
+                'A result has been published',
+                'Your result for '.($result->courseOffering?->course?->code ?? 'a course').' is now available.',
+                '/student/results'
+            );
+        }
 
         return $this->success(new ResultResource($result->fresh(self::WITH)), 'Result published.');
     }

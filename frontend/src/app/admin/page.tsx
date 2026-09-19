@@ -11,6 +11,7 @@ export default async function AdminLandingPage() {
     { href: "/admin/roles", label: "Roles & Permissions", description: "See what each role can do, and adjust it.", permission: "roles.manage" },
     { href: "/admin/audit-logs", label: "Audit Logs", description: "Trace who did what, and when.", permission: "audit_logs.view" },
     { href: "/admin/institution", label: "Institution Settings", description: "Name, contact details, logo and banner.", permission: "institution.manage" },
+    { href: "/admin/cms", label: "CMS", description: "Announcements, news, events, gallery, downloads, FAQs.", permission: "cms.manage" },
   ].filter((s) => can(session, s.permission));
 
   return (

@@ -4,21 +4,48 @@ import Link from "next/link";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { requireSession, can, getSessionToken } from "@/lib/auth/session";
 import { getMyStudentRecord } from "@/lib/api/students";
+import { getNotifications } from "@/lib/api/notifications";
 
 /**
  * Generic authenticated landing page. Role-specific dashboards (lecturer,
- * HOD, registrar, management, admin...) replace this per role as their
- * phases land — see docs/PROJECT_STATUS.md. Student accounts now get a
- * real panel here (Phase 6); this otherwise still proves the auth flow
- * end-to-end: login → httpOnly session → protected page → permission-
- * aware UI → logout.
+ * HOD, registrar, management, admin, ...) are reachable from the links
+ * below, filtered to whatever the signed-in account actually holds
+ * permission for. Student accounts get a real summary panel here too.
+ * This still proves the auth flow end-to-end: login → httpOnly session →
+ * protected page → permission-aware UI → logout.
  */
 export default async function PortalPage() {
   const session = await requireSession("/portal");
 
+  const token = await getSessionToken();
   const studentRecord = session.roles.includes("student")
-    ? await getMyStudentRecord((await getSessionToken())!)
+    ? await getMyStudentRecord(token!)
     : null;
+  const notificationsResult = await getNotifications(token!);
+  const unreadCount = notificationsResult.body.success ? notificationsResult.body.data.unread_count : 0;
+
+  const hasAnyModule =
+    can(session, "students.view") ||
+    can(session, "applications.view") ||
+    can(session, "course_registrations.view") ||
+    can(session, "results.enter") ||
+    can(session, "results.review") ||
+    can(session, "results.verify") ||
+    can(session, "results.approve") ||
+    can(session, "results.publish") ||
+    can(session, "siwes.manage") ||
+    can(session, "reports.view") ||
+    can(session, "users.manage") ||
+    can(session, "roles.manage") ||
+    can(session, "audit_logs.view") ||
+    can(session, "institution.manage") ||
+    can(session, "payments.view") ||
+    can(session, "courses.view") ||
+    can(session, "clearance.approve") ||
+    session.roles.includes("student") ||
+    session.roles.includes("hod") ||
+    session.roles.includes("bursary_officer") ||
+    session.roles.includes("registrar");
 
   return (
     <Container className="flex flex-col gap-8 py-16">
@@ -36,7 +63,12 @@ export default async function PortalPage() {
             ))}
           </div>
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-3">
+          <Link href="/notifications" className="text-sm text-sky-dark hover:underline">
+            Notifications{unreadCount > 0 ? ` (${unreadCount})` : ""}
+          </Link>
+          <SignOutButton />
+        </div>
       </div>
 
       {studentRecord?.body.success && (
@@ -78,9 +110,6 @@ export default async function PortalPage() {
         </p>
 
         <ul className="mt-4 space-y-1 text-sm">
-          {can(session, "users.manage") && (
-            <li className="text-sky-dark">User &amp; role management (Phase 21) — not built yet.</li>
-          )}
           {can(session, "students.view") && (
             <li>
               <Link href="/staff/students" className="text-sky-dark hover:underline">Student records</Link>
@@ -174,8 +203,8 @@ export default async function PortalPage() {
               <Link href="/clearance" className="text-sky-dark hover:underline">Clearance — decide the stages assigned to your role</Link>
             </li>
           )}
-          {!can(session, "users.manage") && !can(session, "students.view") && !can(session, "applications.view") && !can(session, "course_registrations.view") && !can(session, "results.enter") && (
-            <li className="text-muted">Nothing module-specific yet — check back as later phases land.</li>
+          {!hasAnyModule && (
+            <li className="text-muted">No specific tools are assigned to your account yet — contact ICT/System Administration if this doesn&apos;t look right.</li>
           )}
         </ul>
       </div>

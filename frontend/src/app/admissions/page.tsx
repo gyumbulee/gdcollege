@@ -32,7 +32,7 @@ export default function AdmissionsPage() {
 
         <EmptyState
           title="No admission session currently open"
-          description="Application periods, deadlines, and current-session details will appear here once configured by the Admissions Office (Phase 5)."
+          description="Application periods, deadlines, and current-session details will appear here once configured by the Admissions Office."
         />
       </Container>
     </>

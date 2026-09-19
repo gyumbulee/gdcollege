@@ -1,0 +1,68 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+
+export function CreateGalleryForm() {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/admin/cms/galleries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description: description || undefined }),
+      });
+      const result = await response.json();
+
+      if (!result.success) {
+        setMessage({ tone: "error", text: result.message ?? "Could not create the gallery." });
+        return;
+      }
+
+      setMessage({ tone: "success", text: result.message });
+      setTitle("");
+      setDescription("");
+      router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const fieldClass = "mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:border-sky-dark";
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-white p-5">
+      <p className="font-medium text-ink">New album</p>
+      <label className="mt-3 block text-sm text-muted">
+        Title
+        <input required value={title} onChange={(e) => setTitle(e.target.value)} className={fieldClass} />
+      </label>
+      <label className="mt-3 block text-sm text-muted">
+        Description (optional)
+        <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={fieldClass} />
+      </label>
+
+      {message && (
+        <p className={`mt-3 rounded-md px-3 py-2 text-sm ${message.tone === "success" ? "bg-sky-light text-sky-dark" : "bg-red-50 text-danger"}`}>
+          {message.text}
+        </p>
+      )}
+
+      <div className="mt-4">
+        <Button type="submit" variant="secondary" aria-disabled={submitting}>
+          {submitting ? "Creating…" : "Create album"}
+        </Button>
+      </div>
+    </form>
+  );
+}

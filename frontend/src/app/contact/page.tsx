@@ -29,8 +29,7 @@ export default function ContactPage() {
           ))}
         </dl>
         <p className="mt-6 max-w-lg text-sm text-muted">
-          A contact form and campus map will be added once official details
-          are confirmed and the messaging module (Phase 11) is built.
+          A contact form and campus map will be added once official details are confirmed.
         </p>
       </Container>
     </>
