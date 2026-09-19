@@ -14,8 +14,11 @@ use Illuminate\Pagination\LengthAwarePaginator;
  */
 trait ApiResponse
 {
-    protected function success(mixed $data = [], string $message = 'Operation completed successfully.', int $status = 200): JsonResponse
-    {
+    protected function success(
+        mixed $data = [],
+        string $message = 'Operation completed successfully.',
+        int $status = 200
+    ): JsonResponse {
         return response()->json([
             'success' => true,
             'message' => $message,
@@ -23,8 +26,11 @@ trait ApiResponse
         ], $status);
     }
 
-    protected function fail(string $message = 'The given data was invalid.', array $errors = [], int $status = 422): JsonResponse
-    {
+    protected function fail(
+        string $message = 'The given data was invalid.',
+        array $errors = [],
+        int $status = 422
+    ): JsonResponse {
         return response()->json([
             'success' => false,
             'message' => $message,
@@ -33,37 +39,90 @@ trait ApiResponse
     }
 
     /**
-     * Bug fix (discovered building Phase 9's frontend, the first real
-     * consumer of a paginated staff listing): `SomeResource::collection($paginator)`
-     * only attaches pagination meta (current_page/last_page/total/links)
-     * when Laravel's router calls its `toResponse()` directly — e.g.
-     * `return SomeResource::collection(...)` as the whole response. Every
-     * staff index() in this codebase instead nests it inside
-     * `['data' => ...]` via `success()`, which only ever triggers plain
-     * `jsonSerialize()` — silently dropping all pagination metadata down
-     * to a flat item array. Restore it explicitly here, once, so every
-     * paginated success() response (existing and future) carries usable
-     * `items` + `pagination` instead of losing it. No existing frontend
-     * consumed the flat-array shape yet, so this isn't a breaking change
-     * in practice — see docs/PROJECT_STATUS.md.
+     * Normalize all supported Laravel pagination shapes into the platform's
+     * standard frontend contract:
+     *
+     * {
+     *     items: [...],
+     *     pagination: {
+     *         current_page: number,
+     *         per_page: number,
+     *         has_more_pages: boolean,
+     *         total: number|null,
+     *         last_page: number|null
+     *     }
+     * }
+     *
+     * This handles both:
+     *
+     * 1. ResourceCollection wrapping a paginator.
+     * 2. A paginator passed directly to success().
      */
     private function normalizeData(mixed $data): mixed
     {
-        if (! $data instanceof ResourceCollection || ! $data->resource instanceof Paginator) {
-            return $data;
+        /*
+         * Case 1:
+         * A ResourceCollection wrapping a paginator.
+         */
+        if (
+            $data instanceof ResourceCollection
+            && $data->resource instanceof Paginator
+        ) {
+            $paginator = $data->resource;
+
+            return [
+                'items' => $data->collection
+                    ->map(fn ($item) => $item->toArray(request()))
+                    ->all(),
+
+                'pagination' => $this->paginationMeta($paginator),
+            ];
         }
 
-        $paginator = $data->resource;
+        /*
+         * Case 2:
+         * A paginator passed directly to success().
+         *
+         * This is the shape used by controllers such as:
+         *
+         * return $this->success(
+         *     Post::query()->paginate(...)
+         * );
+         */
+        if ($data instanceof Paginator) {
+            return [
+                'items' => collect($data->items())
+                    ->map(function ($item) {
+                        if (is_object($item) && method_exists($item, 'toArray')) {
+                            return $item->toArray(request());
+                        }
 
+                        return $item;
+                    })
+                    ->all(),
+
+                'pagination' => $this->paginationMeta($data),
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Build the platform-standard pagination metadata.
+     */
+    private function paginationMeta(Paginator $paginator): array
+    {
         return [
-            'items' => $data->collection->map(fn ($item) => $item->toArray(request()))->all(),
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'has_more_pages' => $paginator->hasMorePages(),
-                'total' => $paginator instanceof LengthAwarePaginator ? $paginator->total() : null,
-                'last_page' => $paginator instanceof LengthAwarePaginator ? $paginator->lastPage() : null,
-            ],
+            'current_page' => $paginator->currentPage(),
+            'per_page' => $paginator->perPage(),
+            'has_more_pages' => $paginator->hasMorePages(),
+            'total' => $paginator instanceof LengthAwarePaginator
+                ? $paginator->total()
+                : null,
+            'last_page' => $paginator instanceof LengthAwarePaginator
+                ? $paginator->lastPage()
+                : null,
         ];
     }
 }

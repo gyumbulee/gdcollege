@@ -61,7 +61,7 @@ class RolePermissionSeeder extends Seeder
     /** Role slug => permission slugs. */
     private array $assignments = [
         'admission_officer' => ['applications.view', 'applications.review', 'applications.shortlist', 'applications.admit', 'applications.reject'],
-        'academic_officer' => ['courses.view', 'results.view', 'results.verify', 'results.approve', 'results.publish', 'results.correct', 'academic_structure.manage', 'clearance.approve'],
+        'academic_officer' => ['courses.view', 'courses.create', 'courses.update', 'results.view', 'results.verify', 'results.approve', 'results.publish', 'results.correct', 'academic_structure.manage', 'clearance.approve'],
         'lecturer' => ['courses.view', 'results.view', 'results.enter', 'results.submit'],
         'hod' => ['students.view', 'course_registrations.view', 'course_registrations.approve', 'results.view', 'results.review', 'clearance.approve'],
         'bursary_officer' => ['payments.view', 'payments.verify', 'payments.refund', 'fee_structures.manage', 'invoices.manage', 'invoices.view', 'clearance.approve'],

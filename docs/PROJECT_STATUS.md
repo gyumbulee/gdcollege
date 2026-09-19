@@ -1,6 +1,10 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Phase 17/18 (Notifications & CMS) complete.
+Last updated: Academic Structure admin frontend complete. All phases that
+can be built as code in this sandbox are now done — Production
+Deployment (needs real infrastructure this sandbox doesn't have) and
+final documentation/handover are what remain. See the bottom of this
+file.
 
 ## Repository audit finding (important)
 
@@ -25,7 +29,7 @@ source for seed data, once explicitly confirmed).
 | Foundation | ✓ | Monorepo (`frontend/`, `backend/`, `docs/`) established. Next.js app builds and serves; verified with `npm run build` and a live HTTP check. |
 | Branding config | ✓ | Single source of truth at `frontend/src/config/institution.config.ts`; design tokens mirrored in `globals.css`. No logo/banner supplied yet — placeholder crest used, nothing fabricated. |
 | Public homepage | ✓ (Phase 0 scope) | Real, polished homepage — hero, "how it works", sample-labelled programme preview, empty-state announcements. Not CMS-driven yet (that's Phase 3/18). |
-| Public website (other pages) | ✓ (Phase 3 scope) | Academics section (overview/schools/departments/programmes) now renders real data from the Phase 2 API — verified live end-to-end against a stub. About/Management/Contact redesigned with real structure (not bare "coming soon") but honest placeholder content — no fabricated names, history, or figures. News/Events/Gallery/Downloads/Admissions-requirements/Admission-list are genuine empty states (not stubs) pending Phase 11/5. Dynamic `/news/[slug]`, `/events/[slug]`, `/verify/[code]` routes exist and degrade honestly. |
+| Public website (other pages) | ✓ (Phase 3 scope) | Academics section (overview/schools/departments/programmes) now renders real data from the Phase 2 API — verified live end-to-end against a stub. About/Management/Contact redesigned with real structure (not bare "coming soon") but honest placeholder content — no fabricated names, history, or figures. News/Events/Gallery/Downloads/FAQs now render real CMS content (Phase 17/18) with honest empty states when none exists yet. Admissions-requirements/Admission-list remain genuine empty states pending official session/requirement data. Dynamic `/news/[slug]`, `/events/[slug]`, `/gallery/[slug]`, `/verify/[code]` routes exist and degrade honestly. |
 | Backend foundation | ⚠ | Application-level code complete for Phase 0/1 scope (composer.json, routes, CORS/Sanctum config, migrations, models, controllers, seeders). **The actual Laravel framework has still not been installed or run in-sandbox** — see "Known limitation" below; code has been reviewed for correctness but not executed against a real DB. |
 | Authentication | ✓ (code complete, unexecuted on backend) | Sanctum token auth (`/auth/login`, `/auth/logout`, `/auth/me`); Next.js side (login form, httpOnly-cookie session, protected `/portal`, logout) verified live end-to-end against a stub standing in for Laravel — see below. |
 | RBAC | ✓ (code complete, unexecuted on backend) | 13 roles + full spec permission list seeded via `RolePermissionSeeder`; `EnsurePermission` middleware + `hasPermission()`/`hasRole()` on `User`; Super Administrator Gate bypass; ICT/System Administrator deliberately excluded from that bypass per spec. |
@@ -1035,14 +1039,82 @@ none of which existed before this phase.
   in this sandbox, same standing constraint as Phases 14/21/22; traced
   by hand against the actual model fillables/migrations instead.
 
-## Immediate next target
+## What this final code phase added — Academic Structure admin frontend
 
-Same standing item as after Phase 14, 21, and 22, now covering four
-phases: **get Phases 14, 21, 22, and 17/18's PHP-side changes actually
-run** against a real PHP/Composer/MySQL environment before building
-further on top of any of them. After that: a staff-facing frontend for
-the academic-structure CRUD Phase 2 already built at the API level
-(backend exists, no UI — and would also unlock proper dropdowns for
-announcement audience targeting, see above), and eventual Production
-Deployment — neither started yet. Before starting either, re-clone the
-live repo first — another session may have moved `main` again.
+Closes the last gap that was pure code: Phase 2's backend (schools,
+departments, programmes, academic sessions, semesters, levels, course
+types, courses, course offerings) has existed since early in the project
+with zero staff-facing UI to use it — every one of those had to be
+managed by editing seeders directly until now.
+
+- **Backend fix found while building this**: `courses.create` and
+  `courses.update` were defined as permissions and referenced by routes,
+  but granted to nobody in `RolePermissionSeeder` — meaning no account
+  could create or edit a course through the API at all, only through
+  `DatabaseSeeder`. Granted both to `academic_officer`, who already holds
+  `academic_structure.manage` for everything else in this domain.
+- **Frontend**: `/admin/academics`, gated on holding any of
+  `academic_structure.manage`/`courses.create`/`courses.update` — the
+  same three-permission pattern the routes themselves already used.
+  Four sub-pages, consolidated rather than nine separate ones for nine
+  entity types: `/structure` (Schools/Departments/Programmes),
+  `/calendar` (Sessions/Semesters/Levels/Course Types), `/courses`, and
+  `/course-offerings`. One generic `AcademicEntityForm` component
+  (field-list driven) instead of nine hand-written forms, and one
+  generic allowlisted proxy route (`/api/admin/academics/[resource]`)
+  instead of nine near-identical ones.
+- **Known, stated gap**: Course Offerings' lecturer field is a plain
+  numeric user-ID input, not a picker — there's no existing "list staff
+  by role" endpoint to build a proper dropdown from (Phase 21's user
+  management lists ALL staff, unfiltered by role, which isn't quite the
+  same thing). Same underlying gap as Announcements' raw audience-ID
+  field from Phase 17/18 — both would be solved together by one small,
+  well-scoped future addition: a `?role=lecturer`-style filter on the
+  existing staff-listing endpoint.
+- **Verified so far**: full `next build` + `eslint` clean, zero errors.
+  Live end-to-end against a stub server: all four sub-pages render real
+  seeded data (schools/departments/programmes with their relationships,
+  sessions/semesters/levels/course-types, courses, and an offering with
+  its resolved course); the generic proxy's create and delete both
+  round-trip correctly; a student account is correctly redirected away.
+  The backend fix (the permission grant) could not be executed — no
+  PHP/Composer/MySQL in this sandbox, the same standing constraint as
+  every other backend change across this project.
+
+## Where the project actually stands
+
+Every phase that is genuinely buildable as code in a sandbox with no
+PHP/Composer/MySQL and no real server is now done. What's left is not
+more application code:
+
+1. **Get the unexecuted phases running for real.** Phases 14, 21, 22,
+   17/18, and this one have only ever been hand-traced against actual
+   model fillables and migrations, or verified against a Python stub
+   standing in for Laravel — never against real PHP. This is the
+   single most important next step, in this order of priority (highest
+   file-count / most authorization-sensitive first): Phase 14
+   (`ResultPolicy`, password reset), Phase 21 (user/role management),
+   Phase 17/18 (nine new tables — run `php artisan migrate` and check
+   nothing collides with anything a real MySQL enforces that SQLite
+   testing wouldn't have caught), Phase 22, this phase's permission fix.
+2. **Production Deployment** (server, domain, SSL, backups, monitoring,
+   queue/scheduler config) genuinely cannot be done from this sandbox —
+   it needs real infrastructure. `backend/README.md` and this file
+   together already cover local setup; a dedicated deployment runbook
+   is worth writing once the target infrastructure (host, domain
+   registrar, mail/SMS provider) is actually chosen, since a generic
+   one written now would just be guesswork.
+3. **Documentation/handover** — architecture, environment variables, API
+   conventions, and current status are already covered across this file,
+   `README.md`, and `backend/README.md` as the project has gone; a
+   polished standalone handover document is only worth assembling once
+   step 1 is done, so it can truthfully say "verified working" rather
+   than "verified against a stub."
+
+Small, deliberately-deferred gaps that don't block any of the above:
+Graduation date/timeline tracking (no `graduated_at` field), a frontend
+account/settings page for the Phase 14 change-password endpoint, 5 of
+the 8 notification triggers from §25 still unwired (mechanical to add),
+Announcement/Course-Offering staff pickers (both need the same small
+"filter staff by role" endpoint addition), Pages have no in-place edit
+UI.

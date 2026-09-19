@@ -12,7 +12,8 @@ export default async function AdminLandingPage() {
     { href: "/admin/audit-logs", label: "Audit Logs", description: "Trace who did what, and when.", permission: "audit_logs.view" },
     { href: "/admin/institution", label: "Institution Settings", description: "Name, contact details, logo and banner.", permission: "institution.manage" },
     { href: "/admin/cms", label: "CMS", description: "Announcements, news, events, gallery, downloads, FAQs.", permission: "cms.manage" },
-  ].filter((s) => can(session, s.permission));
+    { href: "/admin/academics", label: "Academic Structure", description: "Schools, departments, programmes, sessions, courses & offerings.", permission: ["academic_structure.manage", "courses.create", "courses.update"] },
+  ].filter((s) => (Array.isArray(s.permission) ? s.permission.some((p) => can(session, p)) : can(session, s.permission)));
 
   return (
     <Container className="flex flex-col gap-6 py-12">

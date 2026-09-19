@@ -153,6 +153,22 @@ CMS FormRequests would have rejected their own publish-toggle button's
 partial PATCH). Same PHP-side caveat as Phases 14, 21, and 22; the
 frontend was verified live end-to-end and builds clean at 175 routes.
 
+**Academic Structure admin frontend:** the last gap that was pure code —
+Phase 2's backend (schools, departments, programmes, sessions, semesters,
+levels, course types, courses, course offerings) existed since early in
+the project with no staff UI, manageable only by editing seeders. Also
+found and fixed a real permission gap: `courses.create`/`courses.update`
+existed but were granted to nobody, so no account could create or edit a
+course through the API at all until now.
+
+**Where the project stands now:** every phase that's genuinely buildable
+as code in a sandbox with no PHP/Composer/MySQL and no real server is
+done. What's left is getting the unexecuted phases (14, 21, 22, 17/18,
+and this one) actually running against real PHP, and — once that's
+solid — Production Deployment and a polished handover document, neither
+of which can honestly be done from here. See `docs/PROJECT_STATUS.md`'s
+closing section for specifics and priority order.
+
 **Starting a new chat to continue?** Read `docs/PROJECT_STATUS.md` first —
 it opens with a short primer on exactly that.
 
