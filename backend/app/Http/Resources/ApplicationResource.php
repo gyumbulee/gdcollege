@@ -22,6 +22,8 @@ class ApplicationResource extends JsonResource
             'application_number' => $this->application_number,
             'status' => $this->status,
             'fee_paid' => $this->fee_paid,
+            'fee_amount' => (float) config('admissions.application_fee_amount'),
+            'fee_required' => (bool) config('admissions.application_fee_required_before_submission'),
             'submitted_at' => $this->submitted_at,
             'programme' => $this->whenLoaded('programme', fn () => $this->programme ? [
                 'id' => $this->programme->id,

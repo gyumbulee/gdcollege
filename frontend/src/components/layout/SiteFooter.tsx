@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { institutionConfig } from "@/config/institution.config";
+import { getInstitutionData } from "@/lib/api/institution";
 import { CrestMark } from "@/components/brand/CrestMark";
 import { Container } from "@/components/ui/Container";
 
-export function SiteFooter() {
-  const { identity, location, contact, nav } = institutionConfig;
+export async function SiteFooter() {
+  const { nav } = institutionConfig;
+  const { identity, location, contact, assets } = await getInstitutionData();
   const year = new Date().getFullYear();
 
   return (
@@ -12,7 +14,7 @@ export function SiteFooter() {
       <Container className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-3">
-            <CrestMark size={32} />
+            <CrestMark size={32} logoSrc={assets.logoSrc} shortName={identity.shortName} />
             <span className="font-[family-name:var(--font-display)] text-white">
               {identity.shortName}
             </span>
@@ -46,7 +48,7 @@ export function SiteFooter() {
             </li>
             <li>
               <Link href="/student/login" className="text-white/60 hover:text-white">
-                Student Login
+                Login
               </Link>
             </li>
             <li>

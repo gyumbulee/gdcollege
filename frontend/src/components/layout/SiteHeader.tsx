@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { institutionConfig } from "@/config/institution.config";
+import { getInstitutionData } from "@/lib/api/institution";
 import { CrestMark } from "@/components/brand/CrestMark";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
@@ -8,14 +9,14 @@ import { getSession } from "@/lib/auth/session";
 import { MobileNav } from "./MobileNav";
 
 export async function SiteHeader() {
-  const { identity, nav } = institutionConfig;
-  const session = await getSession();
+  const { nav } = institutionConfig;
+  const [{ identity, assets }, session] = await Promise.all([getInstitutionData(), getSession()]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur">
       <Container className="flex h-16 items-center justify-between gap-6">
         <Link href="/" className="flex items-center gap-3">
-          <CrestMark size={36} />
+          <CrestMark size={36} logoSrc={assets.logoSrc} shortName={identity.shortName} />
           <span className="hidden font-[family-name:var(--font-display)] text-base leading-tight text-ink sm:block">
             {identity.shortName}
           </span>
@@ -45,7 +46,7 @@ export async function SiteHeader() {
           ) : (
             <>
               <Button href="/student/login" variant="ghost">
-                Student Login
+                Login
               </Button>
               <Button href="/admissions/application" variant="primary">
                 Apply Now

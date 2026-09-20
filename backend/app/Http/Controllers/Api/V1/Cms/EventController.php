@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Cms;
 
 use App\Http\Controllers\Api\V1\Cms\Concerns\GeneratesUniqueSlug;
+use App\Http\Controllers\Concerns\UsesUploadsDisk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cms\EventRequest;
 use App\Http\Responses\ApiResponse;
@@ -14,9 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 class EventController extends Controller
 {
-    use ApiResponse, GeneratesUniqueSlug;
-
-    private const DISK = 'public';
+    use ApiResponse, GeneratesUniqueSlug, UsesUploadsDisk;
 
     public function publicIndex(Request $request)
     {
@@ -61,7 +60,7 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('cover_image')) {
-            $event->update(['cover_image_path' => $request->file('cover_image')->store('cms/events', self::DISK)]);
+            $event->update(['cover_image_path' => $request->file('cover_image')->store('cms/events', $this->uploadsDisk())]);
         }
 
         $audit->log('cms.events.create', $event, null, $event->only(['title', 'starts_at', 'status']));
@@ -76,9 +75,9 @@ class EventController extends Controller
 
         if ($request->hasFile('cover_image')) {
             if ($event->cover_image_path) {
-                Storage::disk(self::DISK)->delete($event->cover_image_path);
+                Storage::disk($this->uploadsDisk())->delete($event->cover_image_path);
             }
-            $event->update(['cover_image_path' => $request->file('cover_image')->store('cms/events', self::DISK)]);
+            $event->update(['cover_image_path' => $request->file('cover_image')->store('cms/events', $this->uploadsDisk())]);
         }
 
         $audit->log('cms.events.update', $event, $old, $event->only(['title', 'starts_at', 'status']));
@@ -89,7 +88,7 @@ class EventController extends Controller
     public function destroy(Event $event, AuditLogger $audit)
     {
         if ($event->cover_image_path) {
-            Storage::disk(self::DISK)->delete($event->cover_image_path);
+            Storage::disk($this->uploadsDisk())->delete($event->cover_image_path);
         }
 
         $audit->log('cms.events.delete', $event, $event->only(['title', 'slug']), null);

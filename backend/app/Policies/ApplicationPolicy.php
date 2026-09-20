@@ -24,7 +24,15 @@ class ApplicationPolicy
 
     public function submit(User $user, Application $application): bool
     {
-        return $this->owns($user, $application) && $application->status === Application::STATUS_DRAFT;
+        return $this->owns($user, $application) && in_array($application->status, Application::EDITABLE_STATUSES, true);
+    }
+
+    /** Paying is allowed while still editable, or already sitting at PAYMENT_PENDING from a prior attempt — never after the fee is already confirmed paid. */
+    public function pay(User $user, Application $application): bool
+    {
+        return $this->owns($user, $application)
+            && ! $application->fee_paid
+            && in_array($application->status, [Application::STATUS_DRAFT, Application::STATUS_PAYMENT_PENDING], true);
     }
 
     public function manageDocuments(User $user, Application $application): bool

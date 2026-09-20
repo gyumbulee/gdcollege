@@ -75,3 +75,19 @@ export function getAdminAuditLogs(token: string, params: Record<string, string> 
 export function getInstitutionSettings(token: string) {
   return apiFetch<InstitutionSettings>("/admin/institution", { token });
 }
+
+export type DocumentTemplateSetting = {
+  id: number;
+  type: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  requires_request: boolean;
+  original_filename: string | null;
+  file_url: string | null;
+  uploaded_at: string | null;
+};
+
+export function getDocumentTemplates(token: string) {
+  return apiFetch<DocumentTemplateSetting[]>("/admin/document-templates", { token });
+}

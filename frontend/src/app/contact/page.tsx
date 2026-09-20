@@ -1,9 +1,9 @@
 import { PublicPageHeader } from "@/components/layout/PublicPageHeader";
 import { Container } from "@/components/ui/Container";
-import { institutionConfig } from "@/config/institution.config";
+import { getInstitutionData } from "@/lib/api/institution";
 
-export default function ContactPage() {
-  const { location, contact } = institutionConfig;
+export default async function ContactPage() {
+  const { location, contact } = await getInstitutionData();
 
   const rows = [
     { label: "Address", value: location.address ?? "Pending confirmation by Registry" },
@@ -29,7 +29,8 @@ export default function ContactPage() {
           ))}
         </dl>
         <p className="mt-6 max-w-lg text-sm text-muted">
-          A contact form and campus map will be added once official details are confirmed.
+          The details above are managed by the College and kept current here automatically. A
+          campus map will be added once official details are confirmed.
         </p>
       </Container>
     </>

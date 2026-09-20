@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { institutionConfig } from "@/config/institution.config";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { getInstitutionData } from "@/lib/api/institution";
 
-export const metadata: Metadata = {
-  title: `${institutionConfig.identity.shortName} — ${institutionConfig.identity.formalName}`,
-  description:
-    "Official digital platform of Goran Dutse College of General Studies Wase — admissions, academics, and student services.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { identity } = await getInstitutionData();
+
+  return {
+    title: `${identity.shortName} — ${identity.formalName}`,
+    description: `Official digital platform of ${identity.formalName} — admissions, academics, and student services.`,
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

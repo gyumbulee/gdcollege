@@ -3,7 +3,7 @@ import { JourneyStrip } from "@/components/home/JourneyStrip";
 import { ProgrammesPreview } from "@/components/home/ProgrammesPreview";
 import { NoticeBoard } from "@/components/home/NoticeBoard";
 
-export default function HomePage() {
+export default async function HomePage() {
   return (
     <>
       <Hero />

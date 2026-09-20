@@ -21,6 +21,49 @@ default migrations, etc.) is **not** included, because generating it
 without Composer would mean fabricating framework internals — that's
 worse than not including it at all.
 
+## File storage (uploads)
+
+Every controller that stores an uploaded file — institution logo/banner,
+document templates, gallery photos, CMS post/event images, CMS downloads,
+applicant documents, helpdesk attachments — reads the disk name from
+`config/filesystems.php`'s `uploads_disk` (public-facing) and
+`private_uploads_disk` (private, never a public URL) instead of
+hardcoding one. See `app/Http/Controllers/Concerns/UsesUploadsDisk.php`.
+
+**Local disk (default) — one extra step the setup above doesn't
+mention**: uploaded files land in `storage/app/public`, but Laravel
+only serves that folder through the public web root via a symlink,
+which `composer create-project` does **not** create for you:
+
+```bash
+php artisan storage:link
+```
+
+Skip this and every uploaded image/file will save successfully on the
+backend but 404 when the frontend tries to display or download it — the
+upload looks broken even though nothing actually failed. Run this once,
+right after `composer install` (repeat it if you ever move/redeploy the
+app to a new server, since it's a real symlink, not a config setting).
+
+**Amazon S3** — set these in `.env` and every one of the controllers
+above switches to S3 automatically, no code changes:
+
+```bash
+UPLOADS_DISK=s3
+PRIVATE_UPLOADS_DISK=s3
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=...
+AWS_BUCKET=...
+```
+
+Requires `composer require league/flysystem-aws-s3-v3` (already in
+`composer.json`; run `composer install`/`composer update` to actually
+pull it in). The two disk vars can be set independently — e.g. keep
+public assets on local disk behind a CDN but move only private
+applicant documents to S3 — since `UPLOADS_DISK` and
+`PRIVATE_UPLOADS_DISK` are two separate switches.
+
 ## Setup (run this on a machine with PHP 8.3+ and Composer)
 
 ```bash
@@ -46,6 +89,32 @@ php artisan serve
 # → http://localhost:8000/api/v1/health should return
 #   { "success": true, "message": "GD College Wase API is running.", ... }
 ```
+
+### If `composer install`/`composer update` fails here
+
+Two real issues have come up running this for the first time (XAMPP,
+September 2026):
+
+1. **"...affected by security advisories" for `laravel/framework`.**
+   `composer.json` requires `laravel/framework: ^13.0` (Laravel 11 has
+   accumulated enough security advisories that Composer's audit feature
+   blocks installing it outright as of late 2026 — 13.x is the current
+   stable major). If you still see this, `composer.json` is out of date
+   relative to what's in this repo — pull the latest.
+2. **"lock file is not up to date" / version mismatches against an
+   existing `composer.lock`.** This happens if `composer.lock` already
+   exists locally from before this repo's `composer.json` was applied
+   (e.g. from an earlier `composer create-project laravel/laravel`
+   scaffold). The lock and the manifest disagree and `composer install`
+   won't reconcile that for you — delete both the lock file and
+   `vendor/`, then run a full update instead:
+   ```bash
+   rm composer.lock
+   rm -rf vendor
+   composer update
+   ```
+   (Windows: `del composer.lock` and `rmdir /s /q vendor`.) This
+   regenerates a lock file that actually matches `composer.json`.
 
 ## Conventions established in this phase
 

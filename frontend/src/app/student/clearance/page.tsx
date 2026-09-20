@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireSession, getSessionToken } from "@/lib/auth/session";
 import { getMyClearance } from "@/lib/api/clearance";
 import { Container } from "@/components/ui/Container";
@@ -56,6 +57,16 @@ export default async function StudentClearancePage() {
             <p className="font-medium text-ink">Overall status</p>
             <Badge tone={STATUS_TONE[body.data.status] ?? "muted"}>{body.data.status}</Badge>
           </div>
+
+          {body.data.status === "COMPLETED" && (
+            <p className="mt-3 rounded-md bg-green-50 px-4 py-3 text-sm text-success">
+              All stages complete — request your Clearance Certificate from{" "}
+              <Link href="/student/documents" className="underline">
+                My Documents
+              </Link>
+              .
+            </p>
+          )}
 
           <ol className="mt-4 flex flex-col gap-3">
             {body.data.items?.map((item) => (

@@ -23,5 +23,9 @@ export async function POST(request: NextRequest) {
 
   await setSessionCookies(body.data.token, body.data.user);
 
-  return NextResponse.json({ success: true, message: body.message });
+  return NextResponse.json({
+    success: true,
+    message: body.message,
+    data: { roles: body.data.user.roles },
+  });
 }

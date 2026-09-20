@@ -15,7 +15,7 @@ class Download extends Model
     protected function fileUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->file_path ? Storage::disk('public')->url($this->file_path) : null,
+            get: fn () => $this->file_path ? Storage::disk(config('filesystems.uploads_disk'))->url($this->file_path) : null,
         );
     }
 

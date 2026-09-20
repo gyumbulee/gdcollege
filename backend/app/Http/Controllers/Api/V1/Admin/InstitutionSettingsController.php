@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Http\Controllers\Concerns\UsesUploadsDisk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\InstitutionSettingsRequest;
 use App\Http\Responses\ApiResponse;
@@ -19,18 +20,26 @@ use Illuminate\Support\Facades\Storage;
  * these can move to database-backed institution settings." This is that:
  * the first endpoint that can actually read or write the Institution row.
  *
- * Frontend note (not built in this phase): institution.config.ts's colour
- * palette stays static/build-time (it's mirrored into Tailwind's @theme in
- * globals.css, which can't read a database at build time) — only the
- * identity/contact/asset fields below become dynamically editable here.
+ * Frontend note: institution.config.ts's colour palette stays static/
+ * build-time (it's mirrored into Tailwind's @theme in globals.css, which
+ * can't read a database at build time) and the nav menu structure stays
+ * static too — only the identity/contact/asset fields below are
+ * database-backed. The public site consumes them through publicShow()
+ * below via frontend/src/lib/api/institution.ts's getInstitutionData(),
+ * which merges this data over institution.config.ts's static fallbacks
+ * (never the other way around) — see that file.
  */
 class InstitutionSettingsController extends Controller
 {
-    use ApiResponse;
-
-    private const DISK = 'public';
+    use ApiResponse, UsesUploadsDisk;
 
     public function show()
+    {
+        return $this->success($this->present($this->row()));
+    }
+
+    /** Public counterpart to show() — same data (nothing on Institution is sensitive), no auth required. Read by every public page's header/footer/about/contact — see frontend/src/lib/api/institution.ts. */
+    public function publicShow()
     {
         return $this->success($this->present($this->row()));
     }
@@ -44,16 +53,16 @@ class InstitutionSettingsController extends Controller
 
         if ($request->hasFile('logo')) {
             if ($institution->logo_path) {
-                Storage::disk(self::DISK)->delete($institution->logo_path);
+                Storage::disk($this->uploadsDisk())->delete($institution->logo_path);
             }
-            $institution->logo_path = $request->file('logo')->store('branding', self::DISK);
+            $institution->logo_path = $request->file('logo')->store('branding', $this->uploadsDisk());
         }
 
         if ($request->hasFile('banner')) {
             if ($institution->banner_path) {
-                Storage::disk(self::DISK)->delete($institution->banner_path);
+                Storage::disk($this->uploadsDisk())->delete($institution->banner_path);
             }
-            $institution->banner_path = $request->file('banner')->store('branding', self::DISK);
+            $institution->banner_path = $request->file('banner')->store('branding', $this->uploadsDisk());
         }
 
         $institution->save();
@@ -86,8 +95,8 @@ class InstitutionSettingsController extends Controller
             'country' => $institution->country,
             'phone' => $institution->phone,
             'email' => $institution->email,
-            'logo_url' => $institution->logo_path ? Storage::disk(self::DISK)->url($institution->logo_path) : null,
-            'banner_url' => $institution->banner_path ? Storage::disk(self::DISK)->url($institution->banner_path) : null,
+            'logo_url' => $institution->logo_path ? Storage::disk($this->uploadsDisk())->url($institution->logo_path) : null,
+            'banner_url' => $institution->banner_path ? Storage::disk($this->uploadsDisk())->url($institution->banner_path) : null,
         ];
     }
 }

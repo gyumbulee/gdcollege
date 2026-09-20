@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Application;
 use App\Models\FinancialTransaction;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -91,7 +92,11 @@ class PaymentVerificationService
                 'gateway_response' => $result->raw,
             ]);
 
-            $this->applyToInvoice($payment);
+            if ($payment->invoice_id) {
+                $this->applyToInvoice($payment);
+            } elseif ($payment->application_id) {
+                $this->applyToApplication($payment);
+            }
 
             $this->audit->log('payments.verify', $payment, $old, $payment->only(['status', 'gateway_reference']));
 
@@ -102,6 +107,14 @@ class PaymentVerificationService
                     'Payment confirmed',
                     'Your payment of ₦'.number_format((float) $payment->amount, 2).' has been confirmed.',
                     '/student/fees'
+                );
+            } elseif ($payment->application?->applicant?->user_id) {
+                $this->notifications->toUser(
+                    $payment->application->applicant->user_id,
+                    'payments.confirmed',
+                    'Application fee confirmed',
+                    'Your application fee payment of ₦'.number_format((float) $payment->amount, 2).' has been confirmed.',
+                    '/admissions/application'
                 );
             }
 
@@ -131,6 +144,36 @@ class PaymentVerificationService
             'amount_paid' => $amountPaid,
             'balance' => $balance,
             'status' => $balance <= 0 ? Invoice::STATUS_PAID : Invoice::STATUS_PARTIALLY_PAID,
+        ]);
+    }
+
+    /**
+     * Application-fee counterpart to applyToInvoice() — no invoice or
+     * student exists yet at this point, so this only flips the
+     * application's own fee_paid flag (and, if it's still sitting at
+     * DRAFT/PAYMENT_PENDING, advances it to PAYMENT_CONFIRMED) and
+     * appends an invoice-less financial_transactions row so the payment
+     * still shows up in institutional financial records (§20/§35 —
+     * append-only, never silently dropped).
+     */
+    private function applyToApplication(Payment $payment): void
+    {
+        /** @var Application $application */
+        $application = Application::whereKey($payment->application_id)->lockForUpdate()->first();
+
+        FinancialTransaction::create([
+            'payment_id' => $payment->id,
+            'type' => FinancialTransaction::TYPE_PAYMENT,
+            'direction' => FinancialTransaction::DIRECTION_CREDIT,
+            'amount' => $payment->amount,
+            'description' => "Application fee via {$payment->gateway} (ref: {$payment->reference}) — {$application->application_number}",
+        ]);
+
+        $application->update([
+            'fee_paid' => true,
+            'status' => in_array($application->status, [Application::STATUS_DRAFT, Application::STATUS_PAYMENT_PENDING], true)
+                ? Application::STATUS_PAYMENT_CONFIRMED
+                : $application->status,
         ]);
     }
 

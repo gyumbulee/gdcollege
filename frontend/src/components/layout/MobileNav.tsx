@@ -73,7 +73,7 @@ export function MobileNav({
             ) : (
               <>
                 <Button href="/student/login" variant="ghost" onClick={() => setOpen(false)}>
-                  Student Login
+                  Login
                 </Button>
                 <Button href="/admissions/application" variant="primary" onClick={() => setOpen(false)}>
                   Apply Now

@@ -17,6 +17,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Platform Upload Disks
+    |--------------------------------------------------------------------------
+    |
+    | Every controller across the platform that stores an uploaded file —
+    | institution logo/banner, document templates, gallery photos, CMS
+    | post/event cover images, CMS downloads (all public-facing), and
+    | applicant documents / helpdesk attachments (private — never a
+    | public URL, always streamed through an authenticated download
+    | endpoint; see ApplicationDocumentController/TicketController) —
+    | reads ONE of these two config values instead of hardcoding a disk
+    | name. This is the platform's "single source of truth" convention
+    | (Master Implementation Brief) applied to storage: switching every
+    | one of those controllers from local disk to Amazon S3 is a matter
+    | of setting two env vars, never a code change.
+    |
+    | Locally these default to the "public"/"private" local disks below
+    | — zero external dependencies for dev/demo. In production, set
+    | UPLOADS_DISK=s3 and PRIVATE_UPLOADS_DISK=s3 (plus the AWS_* vars
+    | on the 's3' disk below) and the whole platform's files move to S3
+    | automatically. They can also be flipped independently — e.g. keep
+    | public assets on local disk behind a CDN, but move only private
+    | applicant documents to S3 — since public-facing and
+    | authorization-gated files have different exposure requirements.
+    |
+    */
+    'uploads_disk' => env('UPLOADS_DISK', 'public'),
+    'private_uploads_disk' => env('PRIVATE_UPLOADS_DISK', 'private'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
@@ -55,6 +85,13 @@ return [
             'report' => false,
         ],
 
+        // Used when UPLOADS_DISK and/or PRIVATE_UPLOADS_DISK above are
+        // set to "s3". Required env vars: AWS_ACCESS_KEY_ID,
+        // AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, AWS_BUCKET. AWS_URL
+        // is optional (only needed for a custom domain/CloudFront in
+        // front of the bucket — Storage::url() falls back to the
+        // bucket's own S3 endpoint URL when it's unset). See
+        // backend/.env.example.
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

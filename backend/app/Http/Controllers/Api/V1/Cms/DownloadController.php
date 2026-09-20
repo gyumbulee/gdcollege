@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Cms;
 
+use App\Http\Controllers\Concerns\UsesUploadsDisk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cms\DownloadRequest;
 use App\Http\Responses\ApiResponse;
@@ -12,9 +13,7 @@ use Illuminate\Support\Facades\Storage;
 
 class DownloadController extends Controller
 {
-    use ApiResponse;
-
-    private const DISK = 'public';
+    use ApiResponse, UsesUploadsDisk;
 
     public function publicIndex()
     {
@@ -33,7 +32,7 @@ class DownloadController extends Controller
         $download = Download::create([
             'title' => $request->string('title'),
             'category' => $request->input('category'),
-            'file_path' => $file->store('cms/downloads', self::DISK),
+            'file_path' => $file->store('cms/downloads', $this->uploadsDisk()),
             'original_filename' => $file->getClientOriginalName(),
             'uploaded_by' => Auth::id(),
         ]);
@@ -45,7 +44,7 @@ class DownloadController extends Controller
 
     public function destroy(Download $download, AuditLogger $audit)
     {
-        Storage::disk(self::DISK)->delete($download->file_path);
+        Storage::disk($this->uploadsDisk())->delete($download->file_path);
         $audit->log('cms.downloads.delete', $download, $download->only(['title']), null);
         $download->delete();
 

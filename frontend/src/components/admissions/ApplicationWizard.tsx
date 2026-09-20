@@ -44,7 +44,7 @@ export function ApplicationWizard({
 }) {
   const router = useRouter();
   const [application, setApplication] = useState(initialApplication);
-  const editable = application.status === "DRAFT";
+  const editable = ["DRAFT", "PAYMENT_PENDING", "PAYMENT_CONFIRMED"].includes(application.status);
 
   return (
     <div className="space-y-8">
@@ -65,6 +65,8 @@ export function ApplicationWizard({
       <PersonalInfoSection application={application} editable={editable} onSaved={setApplication} />
       <EducationSection application={application} editable={editable} onSaved={setApplication} />
       <DocumentsSection application={application} editable={editable} onSaved={setApplication} />
+
+      {editable && <ApplicationFeeSection application={application} onUpdated={setApplication} />}
 
       {editable && (
         <SubmitSection
@@ -489,6 +491,103 @@ function DocumentsSection({
   );
 }
 
+function ApplicationFeeSection({
+  application,
+  onUpdated,
+}: {
+  application: Application;
+  onUpdated: (a: Application) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ id: number; reference: string } | null>(null);
+
+  if (!application.fee_required) {
+    return null;
+  }
+
+  async function pay() {
+    setBusy(true);
+    setError(null);
+    const response = await fetch(`/api/applications/${application.id}/pay`, { method: "POST" });
+    const result = await response.json();
+    setBusy(false);
+
+    if (!result.success) {
+      setError(result.message ?? "Could not start this payment.");
+      return;
+    }
+
+    if (result.data.authorization_url) {
+      window.location.href = result.data.authorization_url;
+      return;
+    }
+
+    // No checkout URL — the 'test'/manual gateway: offer a way to
+    // complete it right here rather than leaving the applicant stuck.
+    setPending(result.data.payment);
+  }
+
+  async function simulateAndCheck() {
+    if (!pending) return;
+    setBusy(true);
+    setError(null);
+
+    await fetch("/api/payments/simulate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference: pending.reference }),
+    });
+
+    const statusResponse = await fetch(`/api/applications/payments/${pending.id}/status`, { method: "POST" });
+    const statusResult = await statusResponse.json();
+    setBusy(false);
+
+    if (!statusResult.success) {
+      setError(statusResult.message ?? "Could not confirm this payment.");
+      return;
+    }
+
+    setPending(null);
+    onUpdated(statusResult.data);
+  }
+
+  return (
+    <SectionCard title="Application fee">
+      {application.fee_paid ? (
+        <p className="flex items-center gap-2 rounded-md bg-green-50 px-4 py-3 text-sm text-success">
+          Fee of ₦{application.fee_amount.toLocaleString()} confirmed paid.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-muted">
+            A non-refundable application fee of{" "}
+            <span className="font-medium text-ink">₦{application.fee_amount.toLocaleString()}</span> (sample amount,
+            pending Bursary confirmation) must be paid before this application can be submitted.
+          </p>
+
+          {error && <p className="mt-3 text-xs text-danger">{error}</p>}
+
+          {pending ? (
+            <div className="mt-4 flex flex-col items-start gap-2">
+              <p className="text-xs text-muted">
+                Payment {pending.reference} started via the test/manual gateway (no live checkout page).
+              </p>
+              <Button variant="primary" onClick={simulateAndCheck} aria-disabled={busy}>
+                {busy ? "Confirming…" : "Simulate Payment (dev/demo)"}
+              </Button>
+            </div>
+          ) : (
+            <Button variant="primary" className="mt-4" onClick={pay} aria-disabled={busy}>
+              {busy ? "Starting…" : `Pay ₦${application.fee_amount.toLocaleString()}`}
+            </Button>
+          )}
+        </>
+      )}
+    </SectionCard>
+  );
+}
+
 function SubmitSection({
   application,
   onSubmitted,
@@ -498,6 +597,8 @@ function SubmitSection({
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]> | null>(null);
+
+  const feeBlocking = application.fee_required && !application.fee_paid;
 
   async function submit() {
     setSubmitting(true);
@@ -515,9 +616,9 @@ function SubmitSection({
   return (
     <SectionCard title="Review & submit">
       <p className="text-sm text-muted">
-        There is currently no application fee to pay — online payment goes
-        live once the payment gateway (Phase 13) is implemented. Review
-        everything above, then submit.
+        {feeBlocking
+          ? "Pay the application fee above, then review everything and submit."
+          : "Review everything above, then submit."}
       </p>
 
       {errors && Object.keys(errors).length > 0 && (
@@ -531,7 +632,7 @@ function SubmitSection({
         </div>
       )}
 
-      <Button onClick={submit} variant="primary" className="mt-4" aria-disabled={submitting}>
+      <Button onClick={submit} variant="primary" className="mt-4" aria-disabled={submitting || feeBlocking}>
         {submitting ? "Submitting…" : "Submit application"}
       </Button>
     </SectionCard>

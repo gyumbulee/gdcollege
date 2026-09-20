@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\Hod\HodStaffController;
 use App\Http\Controllers\Api\V1\Hod\HodStudentController;
 use App\Http\Controllers\Api\V1\Admin\AuditLogController;
 use App\Http\Controllers\Api\V1\Admin\InstitutionSettingsController;
+use App\Http\Controllers\Api\V1\Admin\DocumentTemplateController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\UserManagementController;
 use App\Http\Controllers\Api\V1\Management\ManagementDashboardController;
@@ -81,6 +82,18 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::get('/health', HealthController::class);
+
+    /*
+    |----------------------------------------------------------------------
+    | Public institution identity (Phase 21 -> public consumption)
+    |----------------------------------------------------------------------
+    | Read by the public site's header/footer/about/contact on every
+    | request — nothing on Institution is sensitive, so this is public
+    | and unauthenticated like /schools etc. below, not under
+    | permission:institution.manage like the admin read/write pair.
+    |----------------------------------------------------------------------
+    */
+    Route::middleware('throttle:public-lookup')->get('/institution', [InstitutionSettingsController::class, 'publicShow']);
 
     Route::middleware('throttle:auth')->group(function () {
         Route::post('/auth/login', [AuthController::class, 'login']);
@@ -228,6 +241,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/{application}', [ApplicationController::class, 'show']);
             Route::patch('/{application}', [ApplicationController::class, 'update']);
             Route::post('/{application}/submit', [ApplicationController::class, 'submit']);
+            Route::post('/{application}/pay', [ApplicationController::class, 'pay']);
+            Route::post('/payments/{payment}/status', [ApplicationController::class, 'paymentStatus']);
 
             Route::put('/{application}/education', [ApplicationEducationController::class, 'replace']);
 
@@ -568,6 +583,11 @@ Route::prefix('v1')->group(function () {
             Route::middleware('permission:institution.manage')->prefix('institution')->group(function () {
                 Route::get('/', [InstitutionSettingsController::class, 'show']);
                 Route::post('/', [InstitutionSettingsController::class, 'update']);
+            });
+
+            Route::middleware('permission:institution.manage')->prefix('document-templates')->group(function () {
+                Route::get('/', [DocumentTemplateController::class, 'index']);
+                Route::post('/{documentTemplate}/upload', [DocumentTemplateController::class, 'upload']);
             });
         });
 

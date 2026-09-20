@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Admissions;
 
+use App\Http\Controllers\Concerns\UsesUploadsDisk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admissions\UploadDocumentRequest;
 use App\Http\Responses\ApiResponse;
@@ -13,17 +14,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApplicationDocumentController extends Controller
 {
-    use ApiResponse;
-
-    /** Private disk only — see config/filesystems.php's `private` disk. */
-    private const DISK = 'private';
+    use ApiResponse, UsesUploadsDisk;
 
     public function store(UploadDocumentRequest $request, Application $application)
     {
         $this->authorize('manageDocuments', $application);
 
         $file = $request->file('file');
-        $path = $file->store("applications/{$application->id}", self::DISK);
+        $path = $file->store("applications/{$application->id}", $this->privateUploadsDisk());
 
         $document = $application->documents()->create([
             'document_type' => $request->string('document_type'),
@@ -40,7 +38,7 @@ class ApplicationDocumentController extends Controller
         $this->authorize('manageDocuments', $application);
         abort_if($document->application_id !== $application->id, 404);
 
-        Storage::disk(self::DISK)->delete($document->storage_path);
+        Storage::disk($this->privateUploadsDisk())->delete($document->storage_path);
         $document->delete();
 
         return $this->success([], 'Document removed.');
@@ -52,6 +50,6 @@ class ApplicationDocumentController extends Controller
         $this->authorize('view', $application);
         abort_if($document->application_id !== $application->id, 404);
 
-        return Storage::disk(self::DISK)->download($document->storage_path, $document->original_filename);
+        return Storage::disk($this->privateUploadsDisk())->download($document->storage_path, $document->original_filename);
     }
 }

@@ -1,18 +1,28 @@
 import { Container } from "@/components/ui/Container";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import Link from "next/link";
+import {
+  Users, ClipboardCheck, ListChecks, BookOpen, BarChart3, Award,
+  Building2, Wallet, FileText, CheckCircle2, Briefcase, LifeBuoy,
+  ClipboardList, Landmark, Archive, LineChart, ShieldCheck, Search,
+  CheckSquare, Bell, LayoutGrid,
+} from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { requireSession, can, getSessionToken } from "@/lib/auth/session";
+import { getDashboardPath } from "@/lib/auth/dashboard";
 import { getMyStudentRecord } from "@/lib/api/students";
 import { getNotifications } from "@/lib/api/notifications";
+import { PortalTile } from "@/components/portal/PortalTile";
 
 /**
- * Generic authenticated landing page. Role-specific dashboards (lecturer,
- * HOD, registrar, management, admin, ...) are reachable from the links
- * below, filtered to whatever the signed-in account actually holds
- * permission for. Student accounts get a real summary panel here too.
- * This still proves the auth flow end-to-end: login → httpOnly session →
- * protected page → permission-aware UI → logout.
+ * The authenticated landing hub. Every role lands on its own primary
+ * dashboard straight from login (see lib/auth/dashboard.ts) — this page
+ * is the "everything you can reach" grid, always available from the
+ * header's "My Portal" link, and permission-aware throughout: a tile
+ * only renders because the signed-in account actually holds the
+ * matching permission — the backend independently enforces this on
+ * every request regardless of what's shown here.
  */
 export default async function PortalPage() {
   const session = await requireSession("/portal");
@@ -24,28 +34,64 @@ export default async function PortalPage() {
   const notificationsResult = await getNotifications(token!);
   const unreadCount = notificationsResult.body.success ? notificationsResult.body.data.unread_count : 0;
 
-  const hasAnyModule =
-    can(session, "students.view") ||
-    can(session, "applications.view") ||
-    can(session, "course_registrations.view") ||
-    can(session, "results.enter") ||
-    can(session, "results.review") ||
-    can(session, "results.verify") ||
-    can(session, "results.approve") ||
-    can(session, "results.publish") ||
-    can(session, "siwes.manage") ||
-    can(session, "reports.view") ||
-    can(session, "users.manage") ||
-    can(session, "roles.manage") ||
-    can(session, "audit_logs.view") ||
-    can(session, "institution.manage") ||
-    can(session, "payments.view") ||
-    can(session, "courses.view") ||
-    can(session, "clearance.approve") ||
-    session.roles.includes("student") ||
-    session.roles.includes("hod") ||
-    session.roles.includes("bursary_officer") ||
-    session.roles.includes("registrar");
+  const tiles: Array<{ href: string; icon: typeof Users; title: string; description: string }> = [];
+
+  if (can(session, "students.view")) {
+    tiles.push({ href: "/staff/students", icon: Users, title: "Student Records", description: "Search and manage student records" });
+  }
+  if (can(session, "applications.view")) {
+    tiles.push({ href: "/staff/admissions", icon: ClipboardCheck, title: "Admissions Review", description: "Screen and decide on applications" });
+  }
+  if (can(session, "course_registrations.view")) {
+    tiles.push({ href: "/staff/course-registrations", icon: ListChecks, title: "Course Registrations", description: "Review student registrations" });
+  }
+  if (can(session, "results.enter")) {
+    tiles.push({ href: "/lecturer/courses", icon: BookOpen, title: "My Courses", description: "Enter and submit results" });
+  }
+  if (can(session, "results.review") || can(session, "results.verify") || can(session, "results.approve") || can(session, "results.publish")) {
+    tiles.push({ href: "/staff/results", icon: BarChart3, title: "Results Pipeline", description: "Review, verify, approve, publish" });
+  }
+  if (session.roles.includes("student")) {
+    tiles.push({ href: "/student/results", icon: Award, title: "My Results", description: "View your published results" });
+  }
+  if (session.roles.includes("hod")) {
+    tiles.push({ href: "/hod", icon: Building2, title: "HOD Portal", description: "Department dashboard, registrations & results" });
+  }
+  if (session.roles.includes("student")) {
+    tiles.push({ href: "/student/fees", icon: Wallet, title: "My Fees", description: "Invoices, balances & payment" });
+    tiles.push({ href: "/student/documents", icon: FileText, title: "My Documents", description: "Generate slips, letters & receipts" });
+    tiles.push({ href: "/student/clearance", icon: CheckCircle2, title: "My Clearance", description: "Track your clearance stages" });
+    tiles.push({ href: "/student/siwes", icon: Briefcase, title: "My SIWES", description: "Submit & track your placement" });
+  }
+  tiles.push({
+    href: "/tickets",
+    icon: LifeBuoy,
+    title: can(session, "helpdesk.view") || can(session, "helpdesk.manage") ? "Helpdesk" : "Support",
+    description: can(session, "helpdesk.view") || can(session, "helpdesk.manage") ? "All support tickets" : "My support tickets",
+  });
+  if (can(session, "siwes.manage")) {
+    tiles.push({ href: "/siwes", icon: ClipboardList, title: "SIWES Coordination", description: "Review placements & assessments" });
+  }
+  if (session.roles.includes("bursary_officer")) {
+    tiles.push({ href: "/bursary", icon: Landmark, title: "Bursary Portal", description: "Fee structures, invoices & payments" });
+  }
+  if (session.roles.includes("registrar")) {
+    tiles.push({ href: "/registrar", icon: Archive, title: "Registrar Portal", description: "Students, documents & issuance" });
+  }
+  if (can(session, "reports.view")) {
+    tiles.push({ href: "/management/dashboard", icon: LineChart, title: "Management Dashboard", description: "Institution-wide KPIs & reports" });
+  }
+  if (can(session, "users.manage") || can(session, "roles.manage") || can(session, "audit_logs.view") || can(session, "institution.manage")) {
+    tiles.push({ href: "/admin", icon: ShieldCheck, title: "System Administration", description: "Users, roles, audit logs & settings" });
+  }
+  if (can(session, "students.view") || can(session, "applications.view") || can(session, "payments.view") || can(session, "courses.view")) {
+    tiles.push({ href: "/search", icon: Search, title: "Search", description: "Students, applications, payments & courses" });
+  }
+  if (can(session, "clearance.approve")) {
+    tiles.push({ href: "/clearance", icon: CheckSquare, title: "Clearance", description: "Decide the stages assigned to your role" });
+  }
+
+  const dashboardPath = getDashboardPath(session.roles);
 
   return (
     <Container className="flex flex-col gap-8 py-16">
@@ -64,12 +110,28 @@ export default async function PortalPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/notifications" className="text-sm text-sky-dark hover:underline">
+          <Link href="/notifications" className="inline-flex items-center gap-1.5 text-sm text-sky-dark hover:underline">
+            <Bell size={16} aria-hidden />
             Notifications{unreadCount > 0 ? ` (${unreadCount})` : ""}
           </Link>
           <SignOutButton />
         </div>
       </div>
+
+      {dashboardPath !== "/portal" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-dark bg-sky-light/40 p-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-dark text-white">
+              <LayoutGrid size={20} aria-hidden />
+            </span>
+            <div>
+              <p className="font-medium text-ink">Your main dashboard</p>
+              <p className="text-xs text-muted">The tools below also work — this jumps straight to your primary workspace.</p>
+            </div>
+          </div>
+          <Button href={dashboardPath} variant="secondary">Open dashboard</Button>
+        </div>
+      )}
 
       {studentRecord?.body.success && (
         <div className="rounded-lg border border-border bg-white p-6">
@@ -100,113 +162,24 @@ export default async function PortalPage() {
         </div>
       )}
 
-      <div className="rounded-lg border border-border bg-white p-6">
+      <div>
         <p className="text-sm font-medium text-ink">Available to you</p>
         <p className="mt-1 text-sm text-muted">
-          This section grows as each phase adds role-specific dashboards.
-          Below are live examples: these links only appear because your
-          account holds the matching permission — the backend independently
-          enforces this on every request, this is just the UI reflecting it.
+          These tiles only appear because your account holds the matching permission —
+          the backend independently enforces this on every request, this is just the UI reflecting it.
         </p>
 
-        <ul className="mt-4 space-y-1 text-sm">
-          {can(session, "students.view") && (
-            <li>
-              <Link href="/staff/students" className="text-sky-dark hover:underline">Student records</Link>
-            </li>
-          )}
-          {can(session, "applications.view") && (
-            <li>
-              <Link href="/staff/admissions" className="text-sky-dark hover:underline">Admissions review</Link>
-            </li>
-          )}
-          {can(session, "course_registrations.view") && (
-            <li>
-              <Link href="/staff/course-registrations" className="text-sky-dark hover:underline">Course registrations</Link>
-            </li>
-          )}
-          {can(session, "results.enter") && (
-            <li>
-              <Link href="/lecturer/courses" className="text-sky-dark hover:underline">My courses (results entry)</Link>
-            </li>
-          )}
-          {(can(session, "results.review") || can(session, "results.verify") || can(session, "results.approve") || can(session, "results.publish")) && (
-            <li>
-              <Link href="/staff/results" className="text-sky-dark hover:underline">Results pipeline</Link>
-            </li>
-          )}
-          {session.roles.includes("student") && (
-            <li>
-              <Link href="/student/results" className="text-sky-dark hover:underline">My results</Link>
-            </li>
-          )}
-          {session.roles.includes("hod") && (
-            <li>
-              <Link href="/hod" className="text-sky-dark hover:underline">HOD Portal — department dashboard, registrations &amp; results review</Link>
-            </li>
-          )}
-          {session.roles.includes("student") && (
-            <>
-              <li>
-                <Link href="/student/fees" className="text-sky-dark hover:underline">My Fees — invoices, balances &amp; payment</Link>
-              </li>
-              <li>
-                <Link href="/student/documents" className="text-sky-dark hover:underline">My Documents — generate slips/letters, request transcripts</Link>
-              </li>
-              <li>
-                <Link href="/student/clearance" className="text-sky-dark hover:underline">My Clearance — track your clearance stages</Link>
-              </li>
-              <li>
-                <Link href="/student/siwes" className="text-sky-dark hover:underline">My SIWES — submit &amp; track your placement</Link>
-              </li>
-            </>
-          )}
-          <li>
-            <Link href="/tickets" className="text-sky-dark hover:underline">
-              {can(session, "helpdesk.view") || can(session, "helpdesk.manage")
-                ? "Helpdesk — all support tickets"
-                : "Support — my tickets"}
-            </Link>
-          </li>
-          {can(session, "siwes.manage") && (
-            <li>
-              <Link href="/siwes" className="text-sky-dark hover:underline">SIWES Coordination — review placements &amp; record assessments</Link>
-            </li>
-          )}
-          {session.roles.includes("bursary_officer") && (
-            <li>
-              <Link href="/bursary" className="text-sky-dark hover:underline">Bursary Portal — fee structures, invoices &amp; payments</Link>
-            </li>
-          )}
-          {session.roles.includes("registrar") && (
-            <li>
-              <Link href="/registrar" className="text-sky-dark hover:underline">Registrar Portal — students, document requests &amp; issuance</Link>
-            </li>
-          )}
-          {can(session, "reports.view") && (
-            <li>
-              <Link href="/management/dashboard" className="text-sky-dark hover:underline">Management Dashboard — institution-wide KPIs &amp; reports</Link>
-            </li>
-          )}
-          {(can(session, "users.manage") || can(session, "roles.manage") || can(session, "audit_logs.view") || can(session, "institution.manage")) && (
-            <li>
-              <Link href="/admin" className="text-sky-dark hover:underline">System Administration — users, roles, audit logs &amp; institution settings</Link>
-            </li>
-          )}
-          {(can(session, "students.view") || can(session, "applications.view") || can(session, "payments.view") || can(session, "courses.view")) && (
-            <li>
-              <Link href="/search" className="text-sky-dark hover:underline">Search — students, applications, payments &amp; courses</Link>
-            </li>
-          )}
-          {can(session, "clearance.approve") && (
-            <li>
-              <Link href="/clearance" className="text-sky-dark hover:underline">Clearance — decide the stages assigned to your role</Link>
-            </li>
-          )}
-          {!hasAnyModule && (
-            <li className="text-muted">No specific tools are assigned to your account yet — contact ICT/System Administration if this doesn&apos;t look right.</li>
-          )}
-        </ul>
+        {tiles.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">
+            No specific tools are assigned to your account yet — contact ICT/System Administration if this doesn&apos;t look right.
+          </p>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {tiles.map((tile) => (
+              <PortalTile key={tile.href} {...tile} />
+            ))}
+          </div>
+        )}
       </div>
     </Container>
   );

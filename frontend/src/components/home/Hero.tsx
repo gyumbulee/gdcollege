@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
-import { institutionConfig } from "@/config/institution.config";
+import { getInstitutionData } from "@/lib/api/institution";
 
-export function Hero() {
-  const { identity, location } = institutionConfig;
+export async function Hero() {
+  const { identity, location } = await getInstitutionData();
 
   return (
     <section className="border-b border-border bg-white">

@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-// Note: this file assumes the standard Laravel 11 skeleton's User model as
+// Note: this file assumes the standard Laravel skeleton's User model (the
+// streamlined 11+ skeleton structure, unchanged through Laravel 13) as
 // a starting point (Authenticatable, Notifiable, HasApiTokens). Merge this
 // on top of that file rather than dropping it in blind if the skeleton's
 // version has diverged.

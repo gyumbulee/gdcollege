@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Download } from "lucide-react";
 import { requireSession, getSessionToken } from "@/lib/auth/session";
 import { getMyDocuments, getMyDocumentRequests } from "@/lib/api/documents";
 import { Container } from "@/components/ui/Container";
@@ -95,7 +97,18 @@ export default async function StudentDocumentsPage() {
                     {doc.document_number} · verify at /verify/{doc.verification_code}
                   </p>
                 </div>
-                <Badge tone={STATUS_TONE[doc.status] ?? "muted"}>{doc.status}</Badge>
+                <div className="flex items-center gap-3">
+                  <Badge tone={STATUS_TONE[doc.status] ?? "muted"}>{doc.status}</Badge>
+                  {doc.status === "ACTIVE" && (
+                    <Link
+                      href={`/student/documents/${doc.id}`}
+                      className="inline-flex items-center gap-1.5 text-sm text-sky-dark hover:underline"
+                    >
+                      <Download size={15} aria-hidden />
+                      Download
+                    </Link>
+                  )}
+                </div>
               </div>
             ))}
           </div>

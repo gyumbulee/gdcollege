@@ -23,8 +23,8 @@ class Application extends Model
     public const STATUS_ON_HOLD = 'ON_HOLD';
     public const STATUS_WITHDRAWN = 'WITHDRAWN';
 
-    /** Statuses the applicant may still edit their own application in. */
-    public const EDITABLE_STATUSES = [self::STATUS_DRAFT];
+    /** Statuses the applicant may still edit their own application in — includes the fee-payment window, not just DRAFT. */
+    public const EDITABLE_STATUSES = [self::STATUS_DRAFT, self::STATUS_PAYMENT_PENDING, self::STATUS_PAYMENT_CONFIRMED];
 
     protected $fillable = [
         'applicant_id', 'academic_session_id', 'programme_id',

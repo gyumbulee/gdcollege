@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { getDashboardPath } from "@/lib/auth/dashboard";
 
 export function LoginForm() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push(searchParams.get("next") ?? "/portal");
+      router.push(searchParams.get("next") ?? getDashboardPath(result.data?.roles));
       router.refresh();
     } catch {
       setError("Something went wrong reaching the server. Try again in a moment.");

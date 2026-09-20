@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Cms;
 
 use App\Http\Controllers\Api\V1\Cms\Concerns\GeneratesUniqueSlug;
+use App\Http\Controllers\Concerns\UsesUploadsDisk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cms\PostRequest;
 use App\Http\Responses\ApiResponse;
@@ -14,9 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
-    use ApiResponse, GeneratesUniqueSlug;
-
-    private const DISK = 'public';
+    use ApiResponse, GeneratesUniqueSlug, UsesUploadsDisk;
 
     public function publicIndex(Request $request)
     {
@@ -60,7 +59,7 @@ class PostController extends Controller
         ]);
 
         if ($request->hasFile('cover_image')) {
-            $post->update(['cover_image_path' => $request->file('cover_image')->store('cms/posts', self::DISK)]);
+            $post->update(['cover_image_path' => $request->file('cover_image')->store('cms/posts', $this->uploadsDisk())]);
         }
 
         if ($post->status === Post::STATUS_PUBLISHED && ! $post->published_at) {
@@ -79,9 +78,9 @@ class PostController extends Controller
 
         if ($request->hasFile('cover_image')) {
             if ($post->cover_image_path) {
-                Storage::disk(self::DISK)->delete($post->cover_image_path);
+                Storage::disk($this->uploadsDisk())->delete($post->cover_image_path);
             }
-            $post->update(['cover_image_path' => $request->file('cover_image')->store('cms/posts', self::DISK)]);
+            $post->update(['cover_image_path' => $request->file('cover_image')->store('cms/posts', $this->uploadsDisk())]);
         }
 
         if ($post->status === Post::STATUS_PUBLISHED && ! $post->published_at) {
@@ -96,7 +95,7 @@ class PostController extends Controller
     public function destroy(Post $post, AuditLogger $audit)
     {
         if ($post->cover_image_path) {
-            Storage::disk(self::DISK)->delete($post->cover_image_path);
+            Storage::disk($this->uploadsDisk())->delete($post->cover_image_path);
         }
 
         $audit->log('cms.posts.delete', $post, $post->only(['title', 'slug']), null);

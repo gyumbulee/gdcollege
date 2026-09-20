@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Cms;
 
 use App\Http\Controllers\Api\V1\Cms\Concerns\GeneratesUniqueSlug;
+use App\Http\Controllers\Concerns\UsesUploadsDisk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cms\GalleryRequest;
 use App\Http\Responses\ApiResponse;
@@ -14,9 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 class GalleryController extends Controller
 {
-    use ApiResponse, GeneratesUniqueSlug;
-
-    private const DISK = 'public';
+    use ApiResponse, GeneratesUniqueSlug, UsesUploadsDisk;
 
     public function publicIndex()
     {
@@ -68,7 +67,7 @@ class GalleryController extends Controller
     public function destroy(Gallery $gallery, AuditLogger $audit)
     {
         foreach ($gallery->items as $item) {
-            Storage::disk(self::DISK)->delete($item->image_path);
+            Storage::disk($this->uploadsDisk())->delete($item->image_path);
         }
 
         $audit->log('cms.galleries.delete', $gallery, $gallery->only(['title']), null);
@@ -83,7 +82,7 @@ class GalleryController extends Controller
 
         $item = GalleryItem::create([
             'gallery_id' => $gallery->id,
-            'image_path' => $request->file('image')->store('cms/gallery', self::DISK),
+            'image_path' => $request->file('image')->store('cms/gallery', $this->uploadsDisk()),
             'caption' => $request->input('caption'),
             'sort_order' => $gallery->items()->max('sort_order') + 1,
         ]);
@@ -99,7 +98,7 @@ class GalleryController extends Controller
             return $this->fail('Not found.', [], 404);
         }
 
-        Storage::disk(self::DISK)->delete($item->image_path);
+        Storage::disk($this->uploadsDisk())->delete($item->image_path);
         $audit->log('cms.galleries.item.remove', $gallery, ['item_id' => $item->id], null);
         $item->delete();
 

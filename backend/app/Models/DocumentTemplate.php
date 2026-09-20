@@ -20,10 +20,13 @@ class DocumentTemplate extends Model
         self::TYPE_RESULT_SLIP, self::TYPE_PAYMENT_RECEIPT,
     ];
 
-    protected $fillable = ['type', 'name', 'description', 'is_active', 'requires_request'];
+    protected $fillable = [
+        'type', 'name', 'description', 'is_active', 'requires_request',
+        'file_path', 'original_filename', 'uploaded_by', 'uploaded_at',
+    ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'requires_request' => 'boolean'];
+        return ['is_active' => 'boolean', 'requires_request' => 'boolean', 'uploaded_at' => 'datetime'];
     }
 }

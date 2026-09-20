@@ -52,7 +52,11 @@ export function NotificationList({ initial, unreadCount }: { initial: UserNotifi
           );
 
           return (
-            <div key={n.id} onClick={() => !n.read_at && markRead(n.id)}>
+            <div
+              key={n.id}
+              onClick={() => !n.read_at && markRead(n.id)}
+              className={!n.link && !n.read_at ? "cursor-pointer-target" : undefined}
+            >
               {n.link ? <Link href={n.link}>{content}</Link> : content}
             </div>
           );

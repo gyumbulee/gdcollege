@@ -63,6 +63,35 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Global interaction cursor.
+ *
+ * Tailwind's preflight deliberately leaves <button>'s native UA cursor
+ * (`default`, i.e. an arrow) untouched, so every Button/IconButton/select
+ * in the app was showing an arrow instead of a pointing hand. This is the
+ * single place that's fixed, per the platform's "all actions should use
+ * cursor not arrow" requirement — every interactive element gets a pointer
+ * cursor, and disabled/aria-disabled ones get a clear "not allowed" cursor
+ * instead of silently doing nothing.
+ */
+button:not(:disabled):not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+select,
+summary,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+.cursor-pointer-target {
+  cursor: pointer;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -70,5 +99,15 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Printable documents (receipts, slips, certificates — see
+   DocumentPrintView) print cleanly on their own, without the site chrome
+   around them. */
+@media print {
+  header,
+  footer {
+    display: none !important;
   }
 }

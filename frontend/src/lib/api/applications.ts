@@ -53,6 +53,24 @@ export async function submitApplication(token: string, id: number) {
   });
 }
 
+export async function payApplicationFee(token: string, id: number, gateway?: string) {
+  return apiFetch<{ payment: { id: number; reference: string; status: string }; authorization_url: string | null }>(
+    `/applications/${id}/pay`,
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify(gateway ? { gateway } : {}),
+    }
+  );
+}
+
+export async function checkApplicationPaymentStatus(token: string, paymentId: number) {
+  return apiFetch<Application>(`/applications/payments/${paymentId}/status`, {
+    method: "POST",
+    token,
+  });
+}
+
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 /** Multipart upload — bypasses apiFetch since it forces JSON headers. */

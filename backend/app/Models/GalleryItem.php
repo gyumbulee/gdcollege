@@ -15,7 +15,7 @@ class GalleryItem extends Model
     protected function imageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->image_path ? Storage::disk('public')->url($this->image_path) : null,
+            get: fn () => $this->image_path ? Storage::disk(config('filesystems.uploads_disk'))->url($this->image_path) : null,
         );
     }
 

@@ -1,10 +1,10 @@
 import { PublicPageHeader } from "@/components/layout/PublicPageHeader";
 import { Container } from "@/components/ui/Container";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { institutionConfig } from "@/config/institution.config";
+import { getInstitutionData } from "@/lib/api/institution";
 
-export default function AboutPage() {
-  const { identity, location } = institutionConfig;
+export default async function AboutPage() {
+  const { identity, location } = await getInstitutionData();
 
   return (
     <>

@@ -29,6 +29,8 @@ export type Application = {
     | "ON_HOLD"
     | "WITHDRAWN";
   fee_paid: boolean;
+  fee_amount: number;
+  fee_required: boolean;
   submitted_at: string | null;
   programme: { id: number; name: string; department: { id: number; name: string } | null } | null;
   academic_session: { id: number; name: string } | null;

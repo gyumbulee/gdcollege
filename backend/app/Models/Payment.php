@@ -17,7 +17,7 @@ class Payment extends Model
     public const STATUS_REFUNDED = 'REFUNDED';
 
     protected $fillable = [
-        'reference', 'invoice_id', 'student_id', 'gateway', 'gateway_reference',
+        'reference', 'invoice_id', 'student_id', 'application_id', 'gateway', 'gateway_reference',
         'amount', 'status', 'paid_at', 'verified_at', 'gateway_response',
     ];
 
@@ -39,6 +39,12 @@ class Payment extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    /** Set only for application-fee payments (invoice_id/student_id are null in that case). */
+    public function application(): BelongsTo
+    {
+        return $this->belongsTo(Application::class);
     }
 
     public function financialTransactions(): HasMany

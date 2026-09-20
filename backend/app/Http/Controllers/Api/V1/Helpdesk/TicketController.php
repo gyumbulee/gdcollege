@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Helpdesk;
 
+use App\Http\Controllers\Concerns\UsesUploadsDisk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Helpdesk\TicketCreateRequest;
 use App\Http\Requests\Helpdesk\TicketReplyRequest;
@@ -26,9 +27,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class TicketController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, UsesUploadsDisk;
 
-    private const DISK = 'private';
     private const WITH = ['user', 'assignedTo', 'messages.user'];
 
     private function isStaff(): bool
@@ -95,7 +95,7 @@ class TicketController extends Controller
         $attachmentName = null;
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
-            $attachmentPath = $file->store("tickets/{$ticket->id}", self::DISK);
+            $attachmentPath = $file->store("tickets/{$ticket->id}", $this->privateUploadsDisk());
             $attachmentName = $file->getClientOriginalName();
         }
 
@@ -149,6 +149,6 @@ class TicketController extends Controller
         $message = $ticket->messages()->findOrFail($messageId);
         abort_if(! $message->attachment_path, 404);
 
-        return Storage::disk(self::DISK)->download($message->attachment_path, $message->attachment_name);
+        return Storage::disk($this->privateUploadsDisk())->download($message->attachment_path, $message->attachment_name);
     }
 }

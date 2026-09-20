@@ -23,7 +23,7 @@ class Post extends Model
     protected function coverImageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->cover_image_path ? Storage::disk('public')->url($this->cover_image_path) : null,
+            get: fn () => $this->cover_image_path ? Storage::disk(config('filesystems.uploads_disk'))->url($this->cover_image_path) : null,
         );
     }
 

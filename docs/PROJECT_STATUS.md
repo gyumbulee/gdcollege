@@ -1,10 +1,12 @@
 # GD College Wase — Project Status & Gap Analysis
 
-Last updated: Academic Structure admin frontend complete. All phases that
-can be built as code in this sandbox are now done — Production
-Deployment (needs real infrastructure this sandbox doesn't have) and
-final documentation/handover are what remain. See the bottom of this
-file.
+Last updated: first real `composer update` attempt (XAMPP) — Laravel
+framework bumped to ^13.0 (11.x is now blocked by security advisories),
+storage:link confirmed working. See "First real execution — composer
+resolution fixed (2026-09-20)" below. All phases that can be built as
+code in this sandbox are done — actually running this end-to-end
+(migrate, seed, serve) is the next real milestone, followed by
+Production Deployment and final documentation/handover.
 
 ## Repository audit finding (important)
 
@@ -1081,6 +1083,266 @@ managed by editing seeders directly until now.
   PHP/Composer/MySQL in this sandbox, the same standing constraint as
   every other backend change across this project.
 
+## UX/workflow polish session (2026-09-20)
+
+Not a new numbered phase — a pass across several existing phases
+requested directly: login/dashboard UX, cursor/icon polish, the
+applicant-fee gap flagged in earlier sessions, document downloads, and
+a demo document-template upload for ICT/Super Admin.
+
+- **Global cursor fix**: Tailwind's preflight deliberately leaves
+  `<button>` at its native `cursor: default` (an arrow), so every
+  `Button`/icon-button/select in the app was showing an arrow instead
+  of a pointing hand. Fixed in one place — a global rule in
+  `globals.css` (`button, [role="button"], a[href], select, ...{
+  cursor: pointer }`, plus `not-allowed` on disabled) — rather than
+  touching every component.
+- **"Student Login" → "Login"** everywhere (header, mobile nav,
+  footer) — the login page now serves staff, students, and applicants
+  through one unified account system, so the old label was misleading.
+- **Login redirect + role gateway**: new `lib/auth/dashboard.ts`
+  resolves each account's primary dashboard by role priority (super
+  admin/ICT → `/admin`, management → `/management/dashboard`,
+  registrar → `/registrar`, bursary → `/bursary`, HOD → `/hod`, SIWES
+  coordinator → `/siwes`, admission officer → `/staff/admissions`,
+  academic officer → `/staff/results`, lecturer → `/lecturer/courses`,
+  student/applicant → their existing pages, else `/portal`). The login
+  API route now returns roles so `LoginForm` can redirect through it
+  instead of always landing on `/portal`; the login page itself now
+  redirects an already-signed-in visitor straight to their dashboard.
+  `/student/login` (route path kept as-is — only the label changed)
+  now shows a Staff/Student/Applicant picker (`LoginGateway.tsx`,
+  lucide icons) before revealing the sign-in form — purely a UX framing
+  layer over the same single auth endpoint; whichever category is
+  tapped, sign-in still redirects to the account's real role dashboard.
+- **`/portal` redesigned** as an icon+text tile grid (`PortalTile.tsx`)
+  instead of a bare link list, with a highlighted "Open your dashboard"
+  card at the top for roles that have one. `/admin`'s section grid also
+  got icons for the same reason (people recognise icons faster than
+  reading every label).
+- **Applicant fee payment — the gap flagged in the Phase 4/13 notes is
+  now closed.** `payments` is now polymorphic across exactly one of
+  {invoice, application} (`invoice_id`/`student_id` made nullable, new
+  `application_id` — see the 2026_09_20_000001 migration and
+  `PaymentVerificationService::applyToApplication()`, which mirrors
+  `applyToInvoice()`: an invoice-less `financial_transactions` row,
+  `fee_paid` flipped, status advanced to `PAYMENT_CONFIRMED`). New
+  `ApplicationController::pay()`/`paymentStatus()`, gated by a new
+  `ApplicationPolicy::pay` ability, reachable at
+  `POST /applications/{application}/pay` and
+  `POST /applications/payments/{payment}/status`. `config/admissions
+  .php` now carries a clearly-marked **sample** ₦2,000 fee amount and
+  `application_fee_required_before_submission = true` (both
+  env-overridable) — `submit()`'s server-side completeness check
+  enforces it, closing the exact gap the old inline comment described.
+  `Application::EDITABLE_STATUSES` widened from `[DRAFT]` to include
+  `PAYMENT_PENDING`/`PAYMENT_CONFIRMED` so the wizard stays editable
+  through the payment step, not just before it. Frontend:
+  `ApplicationFeeSection` in `ApplicationWizard.tsx` reuses the exact
+  "Simulate Payment (dev/demo)" pattern already used by
+  `PayInvoiceButton` for the `test` gateway (the platform's default —
+  no live processor needed to demo the full pay → submit flow).
+- **Document downloads** — `/student/documents` previously issued
+  documents (admission letter, reg slip, result slip, receipt,
+  clearance certificate) with no way to actually retrieve them. No PDF
+  library is available in this sandbox (documents are generated as a
+  JSON content snapshot, not a rendered file — see
+  `DocumentIssuanceService`), so this is solved without one: a new
+  `/student/documents/[id]` page renders that snapshot into a clean,
+  branded, print-ready layout (`DocumentPrintView.tsx`, per-type
+  formatting for all 7 document types) with a "Print / Save as PDF"
+  button — the browser's own print-to-PDF is the download mechanism,
+  and `@media print` rules hide the site header/footer for a clean
+  printout. `/student/clearance` links here once clearance is complete.
+- **Document template upload (demo scope, super admin/ICT)** — new
+  `Admin\DocumentTemplateController` (`GET /admin/document-templates`,
+  `POST /admin/document-templates/{id}/upload`, gated by
+  `institution.manage`, same pattern as the Phase 21 logo/banner
+  upload) lets ICT/Super Admin attach a reference file (PDF/Word/image)
+  per document type at `/admin/document-templates`. Explicitly demo
+  scope and documented as such in the controller and the page copy:
+  `DocumentIssuanceService` still generates every instant document from
+  live data, never from this file — there is no templating/PDF-
+  rendering engine consuming it yet. New `document_templates` columns:
+  `file_path`, `original_filename`, `uploaded_by`, `uploaded_at` (see
+  the 2026_09_20_000002 migration).
+- **Verified so far**: full `next build`, `tsc --noEmit`, and `eslint`
+  all clean across every new/changed file. The backend changes
+  (migrations, controllers, policy, service branch) could not be
+  executed — same standing sandbox constraint as everything else here;
+  hand-traced line-by-line against the real model fillables/migrations/
+  route groups instead, cross-checked against the equivalent
+  already-working code (`Finance\PaymentController`,
+  `InstitutionSettingsController`) for signature/convention parity.
+- **Not done this session** (said "let's start with this" — more items
+  were listed than fit in one pass): no further items were explicitly
+  deferred; everything requested was implemented. Next likely ask, not
+  yet started: extending the demo template-upload file into something
+  the document-issuance pipeline actually renders from, if that's
+  wanted later.
+
+## Institution Settings wired live to the public site (2026-09-20)
+
+Closes a gap that's been flagged in code comments since Phase 21 shipped:
+`InstitutionSettingsController`'s own docblock said "Frontend note (not
+built in this phase)" — the admin form at `/admin/institution` was fully
+functional, but nothing on the public site ever read from it. Every
+public page (header, footer, home hero, about, contact, page `<title>`,
+printed/downloaded documents) was still reading
+`institution.config.ts`'s static file, which is full of `null`
+placeholders by design ("do not fabricate official facts").
+
+- New public endpoint `GET /institution` (no auth — nothing on
+  Institution is sensitive) — `InstitutionSettingsController::publicShow()`,
+  same `present()` logic as the admin `show()`.
+- New `frontend/src/lib/api/institution.ts` — `getInstitutionData()` is
+  now the one place every public page reads institutional identity from.
+  It merges the live row over `institution.config.ts`'s static fallback
+  (never the other way — a blank admin field falls back to the static
+  config's "Pending confirmation" wording, and if the API is unreachable
+  the whole site degrades to the static config rather than breaking).
+  Brand colours and the nav menu structure stay static/build-time
+  on purpose (colours are mirrored into Tailwind's `@theme` at build
+  time, which can't read a database).
+- Wired into `SiteHeader`, `SiteFooter`, `Hero` (home page), `about`,
+  `contact`, `layout.tsx` (converted the static `metadata` export to
+  `generateMetadata()` so the page `<title>` uses the live name too),
+  and the student document print/download view (`DocumentPrintView` is
+  a client component, so its parent page fetches the data and passes it
+  down as a prop instead).
+- `CrestMark` now accepts optional `logoSrc`/`shortName` overrides —
+  server components with live data pass the admin-uploaded logo through;
+  everything else (the loading spinner, and any client component that
+  can't fetch server data) still falls back to the static placeholder
+  crest, never a fabricated logo.
+- **Contact page scope call**: read "then contact configure" as "make
+  the Contact page reflect live Institution Settings," not "build a new
+  contact-form/inbox feature" — the platform has no outbound email
+  configured yet, and Support Tickets are deliberately scoped to
+  authenticated students/applicants (§28), not anonymous public
+  visitors. Flagged this interpretation to Abee rather than silently
+  picking the bigger scope.
+- **Verified**: `tsc --noEmit`, full `next build`, `eslint` all clean.
+  Backend (the two-line controller addition + route) hand-traced only,
+  same standing constraint.
+- **Repo bookkeeping note**: the previous session's commit (composer
+  Laravel 13 fix) turned out to have missed several files' final content
+  when it was first committed — the ZIP already delivered to Abee was
+  correct (built by reading the working tree directly), but the git
+  commit itself was stale. Caught and fixed via `git commit --amend`
+  before computing this session's diff, so the local commit history
+  now matches what was actually shipped. Worth remembering: verify
+  `git diff HEAD --stat` after committing, not just before.
+
+## First real execution — composer resolution fixed (2026-09-20)
+
+Abee ran `composer update` for the first time (XAMPP, Windows) and hit a
+real, concrete blocker — the first actual command output this project
+has ever produced. Two things going on, both fixed:
+
+1. **`laravel/framework: ^11.0` is now unresolvable.** Composer's
+   security-advisory audit blocks installing *any* 11.x release (27
+   advisories accumulated against the 11.x line by now) unless
+   explicitly overridden — and overriding it would mean deliberately
+   shipping a known-insecure framework version, not a real fix. Laravel
+   13 is the current stable major (released March 2026); `composer.json`
+   now requires `^13.0`, with `laravel/tinker` bumped to `^3.0` and
+   `phpunit/phpunit` (dev) to `^12.0` to match — versions confirmed via
+   web search against Packagist's live metadata, not assumed from
+   training data (this environment can't run `composer install` itself
+   to verify directly). `laravel/sanctum: ^4.0` and
+   `nunomaduro/collision: ^8.0` didn't need to change — both already
+   support Laravel 13 within their existing ranges.
+2. **A `composer.lock` already existed locally** (from before this
+   repo's `composer.json` was ever applied to that machine — likely an
+   earlier `composer create-project laravel/laravel` scaffold) and
+   disagreed with the manifest on `laravel/framework`, `laravel/tinker`,
+   `phpunit/phpunit`, and was missing `laravel/sail` entirely.
+   `composer install` won't reconcile that; documented the fix in
+   `backend/README.md`: delete both `composer.lock` and `vendor/`, then
+   run a full `composer update` to regenerate a lock that actually
+   matches `composer.json`.
+
+Also confirmed: `php artisan storage:link` ran successfully and created
+the symlink — so the previous session's hypothesis about the gallery
+upload issue (missing storage:link, not a real code bug) is now
+verified correct by Abee's own terminal output, not just hand-traced.
+
+**Checked related things while in there**: three code comments
+referencing "Laravel 11" specifically (`app/Models/User.php`,
+`bootstrap/providers.reference.php`,
+`bootstrap/app.middleware-reference.php`) reworded to "the streamlined
+11+ skeleton, unchanged through 13" — the underlying bootstrap/app.php
+-based structure those comments describe hasn't changed across 11→12→13,
+so no functional fix was needed there, just accurate wording. Also
+found and removed `backend/README (2).md` — a stale duplicate of
+`README.md` that had been sitting in the repo since the very first
+commit (196 lines, badly out of date against the real 359-line
+`README.md`) — clearly an accidental double-commit, not intentional.
+
+**Not yet known**: whether the actual application code (all the
+hand-authored controllers/policies/etc.) runs cleanly under real
+Laravel 13 — Laravel's own messaging calls 11→12→13 a "zero-breaking-
+change release for the majority of codebases," and nothing in this
+codebase uses exotic/deprecated framework internals as far as static
+reading can tell, but this has never been executed end-to-end. The next
+`composer update` + `php artisan migrate` + `php artisan serve` attempt
+is the real test.
+
+## Storage/AWS S3 session (2026-09-20)
+
+Two asks: "gallery has no way of adding images" and "for every file or
+doc let's use AWS to save and retrieve for display" — plus a general
+"check related along the way."
+
+- **Gallery uploads were never actually broken.** Hand-traced
+  `GalleryController::addItem()`, its routes, `AddGalleryItemForm.tsx`,
+  and the proxy route end-to-end — all correctly wired. The far more
+  likely explanation: `php artisan storage:link` was never documented
+  anywhere in `backend/README.md`. Skip that one command and every
+  upload to the local `public` disk saves successfully on the backend
+  but 404s the moment the frontend tries to display it — indistinguishable
+  from "adding images doesn't work" unless you know to check the
+  network tab. Added a "File storage (uploads)" section to the README
+  covering this explicitly, right before the setup steps.
+- **Every file/doc upload across the platform is now one config switch
+  away from Amazon S3** — no per-controller code changes needed.
+  `config/filesystems.php` gained two keys: `uploads_disk` (public-facing:
+  institution logo/banner, document templates, gallery photos, CMS
+  post/event images, CMS downloads) and `private_uploads_disk` (never a
+  public URL — applicant documents, helpdesk attachments, streamed only
+  through an authenticated download endpoint). Both default to the
+  existing local `public`/`private` disks (zero external deps for
+  dev/demo) and can be flipped independently by setting `UPLOADS_DISK`
+  and/or `PRIVATE_UPLOADS_DISK` to `s3` (plus the `AWS_*` vars already
+  stubbed in Laravel's own `filesystems.php`). New shared trait
+  `app/Http/Controllers/Concerns/UsesUploadsDisk.php` — every one of the
+  8 file-touching controllers (`GalleryController`, `PostController`,
+  `EventController`, `DownloadController`, `InstitutionSettingsController`,
+  `DocumentTemplateController`, `ApplicationDocumentController`,
+  `TicketController`) and the 4 model URL accessors (`GalleryItem`,
+  `Post`, `Event`, `Download`) now go through this instead of hardcoding
+  `'public'`/`'private'`. Added `league/flysystem-aws-s3-v3` to
+  `composer.json` (no lock file exists yet to go stale — see the
+  standing "never executed" note below).
+- **Found while checking related things**: `.env.example` documented
+  `PAYMENT_DEFAULT_PROVIDER`, but `config/payments.php` has only ever
+  read `PAYMENT_GATEWAY` — that var was silently dead since Phase 13.
+  Fixed, and while in there, filled in every other platform-specific
+  (non-Laravel-boilerplate) env var that config files already read but
+  `.env.example` never documented: invoice number format/padding,
+  admissions application number format, the application-fee vars from
+  the previous session, matric number format, and course-registration
+  credit limits/passing grade point. Each sample value was copied
+  exactly from its config file's existing default — not invented fresh
+  — so copying `.env.example` to `.env` changes nothing at runtime.
+- **Not done**: nothing was executable to verify (no PHP/Composer here,
+  same standing constraint) — hand-traced every controller/model diff
+  line-by-line instead, and double-checked each one's disk-constant
+  removal left no stray `self::DISK` references. No real AWS S3 bucket
+  exists to test against, obviously — the first real S3 test can only
+  happen once this is deployed with real credentials.
+
 ## Where the project actually stands
 
 Every phase that is genuinely buildable as code in a sandbox with no
@@ -1088,7 +1350,10 @@ PHP/Composer/MySQL and no real server is now done. What's left is not
 more application code:
 
 1. **Get the unexecuted phases running for real.** Phases 14, 21, 22,
-   17/18, and this one have only ever been hand-traced against actual
+   17/18, the Academic Structure admin phase, and this polish session
+   (the payments-polymorphism migration, the document_templates file
+   columns, `DocumentTemplateController`, `ApplicationController::pay`/
+   `paymentStatus`) have only ever been hand-traced against actual
    model fillables and migrations, or verified against a Python stub
    standing in for Laravel — never against real PHP. This is the
    single most important next step, in this order of priority (highest
@@ -1096,7 +1361,11 @@ more application code:
    (`ResultPolicy`, password reset), Phase 21 (user/role management),
    Phase 17/18 (nine new tables — run `php artisan migrate` and check
    nothing collides with anything a real MySQL enforces that SQLite
-   testing wouldn't have caught), Phase 22, this phase's permission fix.
+   testing wouldn't have caught), Phase 22, this phase's permission fix,
+   then this session's payments-polymorphism migration (run it against
+   a MySQL copy with existing payment rows to confirm the `MODIFY ...
+   NULL` statements behave as expected before it ever touches
+   production data).
 2. **Production Deployment** (server, domain, SSL, backups, monitoring,
    queue/scheduler config) genuinely cannot be done from this sandbox —
    it needs real infrastructure. `backend/README.md` and this file

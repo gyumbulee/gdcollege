@@ -4,20 +4,31 @@ import { institutionConfig } from "@/config/institution.config";
  * Placeholder institutional mark, drawn in CSS/SVG.
  *
  * This is used everywhere an official logo would normally appear (header,
- * footer, loading state) whenever `institutionConfig.assets.logoSrc` is
- * null. As soon as a real crest/logo is supplied, drop it at
- * public/branding/logo.png and set `logoSrc` in institution.config.ts —
- * every place that renders <CrestMark /> will automatically switch to the
- * real asset without further changes.
+ * footer, loading state) whenever no real logo is set. Accepts optional
+ * `logoSrc`/`shortName` overrides so server components that have already
+ * fetched live Institution Settings (see lib/api/institution.ts) can pass
+ * the admin-uploaded logo straight through; omit them (or render from a
+ * client component, which can't fetch that data itself) and this falls
+ * back to institution.config.ts's static values — never a hardcoded logo,
+ * and never a fabricated one.
  */
-export function CrestMark({ size = 40 }: { size?: number }) {
-  const { assets, identity } = institutionConfig;
+export function CrestMark({
+  size = 40,
+  logoSrc,
+  shortName,
+}: {
+  size?: number;
+  logoSrc?: string | null;
+  shortName?: string;
+}) {
+  const resolvedLogoSrc = logoSrc !== undefined ? logoSrc : institutionConfig.assets.logoSrc;
+  const resolvedShortName = shortName ?? institutionConfig.identity.shortName;
 
-  if (assets.logoSrc) {
+  if (resolvedLogoSrc) {
     return (
       <img
-        src={assets.logoSrc}
-        alt={`${identity.shortName} logo`}
+        src={resolvedLogoSrc}
+        alt={`${resolvedShortName} logo`}
         width={size}
         height={size}
         className="rounded-full object-cover"
@@ -25,7 +36,7 @@ export function CrestMark({ size = 40 }: { size?: number }) {
     );
   }
 
-  const initials = identity.shortName
+  const initials = resolvedShortName
     .split(" ")
     .filter((w) => /^[A-Z]/.test(w))
     .map((w) => w[0])
@@ -38,7 +49,7 @@ export function CrestMark({ size = 40 }: { size?: number }) {
       height={size}
       viewBox="0 0 40 40"
       role="img"
-      aria-label={`${identity.shortName} placeholder crest`}
+      aria-label={`${resolvedShortName} placeholder crest`}
     >
       <circle cx="20" cy="20" r="19" fill="var(--color-sky-light)" stroke="var(--color-sky-dark)" strokeWidth="1.25" />
       <circle cx="20" cy="20" r="15" fill="none" stroke="var(--color-sky-dark)" strokeWidth="0.75" strokeDasharray="1 2.5" />

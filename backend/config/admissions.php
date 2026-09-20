@@ -47,14 +47,19 @@ return [
     | Application Fee
     |--------------------------------------------------------------------------
     |
-    | Intentionally null — no fee amount has been confirmed by Bursary.
-    | Payment enforcement itself is wired in Phase 13 (Payment Gateway);
-    | until then, submission does not require fee_paid=true. Do not set a
-    | placeholder number here "to make the UI look complete" — null
-    | correctly renders as "amount to be confirmed" in the applicant UI.
+    | A SAMPLE/DEMO amount only — no fee has been confirmed by Bursary.
+    | Stored in Naira (decimal), same convention as fee_structures/invoices
+    | elsewhere in the platform — NOT kobo. ₦2,000.00 lets the full
+    | pay -> submit workflow be demoed end-to-end against the 'test'
+    | payment gateway (see config/payments.php) without a live processor.
+    | Replace ADMISSIONS_APPLICATION_FEE_AMOUNT the moment Bursary
+    | confirms the real figure — do not treat this number as official.
+    | Set the env var to empty/0 (or flip the flag below to false) to go
+    | back to "no fee required" if the institution decides not to charge
+    | one.
     |
     */
-    'application_fee_amount' => env('ADMISSIONS_APPLICATION_FEE_AMOUNT'), // in kobo, once confirmed
-    'application_fee_required_before_submission' => false,
+    'application_fee_amount' => (float) env('ADMISSIONS_APPLICATION_FEE_AMOUNT', 2000), // Naira (sample)
+    'application_fee_required_before_submission' => env('ADMISSIONS_APPLICATION_FEE_REQUIRED', true),
 
 ];

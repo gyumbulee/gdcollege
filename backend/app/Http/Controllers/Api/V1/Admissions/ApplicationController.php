@@ -5,14 +5,21 @@ namespace App\Http\Controllers\Api\V1\Admissions;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admissions\CreateApplicationRequest;
 use App\Http\Resources\ApplicationResource;
+use App\Http\Resources\PaymentResource;
 use App\Http\Requests\Admissions\UpdateApplicationRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\AcademicSession;
 use App\Models\Application;
+use App\Models\Payment;
 use App\Services\ApplicationNumberGenerator;
+use App\Services\Payments\PaymentGatewayManager;
+use App\Services\PaymentReferenceGenerator;
+use App\Services\PaymentVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class ApplicationController extends Controller
 {
@@ -111,6 +118,82 @@ class ApplicationController extends Controller
         return $this->success(new ApplicationResource($application->fresh(self::WITH)), 'Application submitted.');
     }
 
+    /**
+     * Starts an application-fee payment attempt. Mirrors
+     * Finance\PaymentController::initiate() exactly, except the Payment
+     * is linked to this Application instead of an Invoice/Student (see
+     * the payments.application_id migration) — everything downstream
+     * (gateway initialize, server-side verify, webhook, audit) is the
+     * same code path either way.
+     */
+    public function pay(Request $request, Application $application, PaymentReferenceGenerator $references, PaymentGatewayManager $gateways)
+    {
+        $this->authorize('pay', $application);
+
+        $amount = (float) config('admissions.application_fee_amount');
+        if ($amount <= 0) {
+            return $this->fail('The application fee amount has not been configured yet.', [], 422);
+        }
+
+        $validated = $request->validate([
+            'gateway' => ['sometimes', 'string', 'in:'.implode(',', array_keys(config('payments.gateways')))],
+        ]);
+        $gatewayName = $validated['gateway'] ?? config('payments.default');
+
+        $payment = DB::transaction(function () use ($application, $amount, $gatewayName, $references) {
+            if ($application->status === Application::STATUS_DRAFT) {
+                $application->update(['status' => Application::STATUS_PAYMENT_PENDING]);
+            }
+
+            return Payment::create([
+                'reference' => $references->generate(),
+                'application_id' => $application->id,
+                'gateway' => $gatewayName,
+                'amount' => $amount,
+                'status' => Payment::STATUS_PENDING,
+            ]);
+        });
+
+        try {
+            $init = $gateways->driver($gatewayName)->initialize($payment);
+        } catch (\Throwable $e) {
+            Log::error('payments.initialize.failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+            $payment->update(['status' => Payment::STATUS_FAILED]);
+
+            return $this->fail('Could not start this payment with the selected gateway. Please try again.', [], 502);
+        }
+
+        $payment->update(['gateway_reference' => $init['gateway_reference'] ?? null]);
+
+        return $this->success([
+            'payment' => new PaymentResource($payment->fresh()),
+            'authorization_url' => $init['authorization_url'],
+        ], 'Application fee payment initiated.', 201);
+    }
+
+    /**
+     * Lets the frontend poll/confirm a payment after returning from a
+     * gateway's checkout (or after "Simulate Payment" on the test
+     * gateway) without waiting on the webhook — same re-verification
+     * guarantee as Finance\PaymentController::status(), never trusting
+     * the request itself as proof of payment.
+     */
+    public function paymentStatus(Payment $payment, PaymentVerificationService $verification)
+    {
+        abort_unless(
+            $payment->application_id && $payment->application->applicant->user_id === Auth::id(),
+            403
+        );
+
+        try {
+            $payment = $verification->verifyAndApply($payment->reference);
+        } catch (RuntimeException $e) {
+            return $this->fail($e->getMessage(), [], 422);
+        }
+
+        return $this->success(new ApplicationResource($payment->application->fresh(self::WITH)));
+    }
+
     /** @return array<string, string[]> */
     private function completenessErrors(Application $application): array
     {
@@ -140,11 +223,15 @@ class ApplicationController extends Controller
             );
         }
 
-        // NOTE: application fee is deliberately NOT enforced here — see
-        // config/admissions.php and docs/PROJECT_STATUS.md. Wire in
-        // `if (config('admissions.application_fee_required_before_submission')
-        //   && ! $application->fee_paid) { $errors['fee'] = [...]; }`
-        // once Phase 13 (Payment Gateway) makes fee_paid trustworthy.
+        // Application fee: only enforced while
+        // admissions.application_fee_required_before_submission is on
+        // (see config/admissions.php — a clearly-marked demo amount
+        // until Bursary confirms the real figure). fee_paid is only
+        // ever flipped by PaymentVerificationService after server-side
+        // gateway verification — see ApplicationController::pay().
+        if (config('admissions.application_fee_required_before_submission') && ! $application->fee_paid) {
+            $errors['fee'] = ['Pay the application fee before submitting.'];
+        }
 
         return $errors;
     }
