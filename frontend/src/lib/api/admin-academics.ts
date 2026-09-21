@@ -1,7 +1,15 @@
 import "server-only";
 import { apiFetch } from "./client";
 
-export type AdminAcademicSession = { id: number; name: string; start_date: string | null; end_date: string | null; is_current: boolean };
+export type AdminAcademicSession = {
+  id: number;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+  admissions_open_at: string | null;
+  admissions_close_at: string | null;
+};
 export type AdminSemester = { id: number; academic_session_id: number; name: string; sort_order: number; is_current: boolean };
 export type AdminLevel = { id: number; name: string; sort_order: number };
 export type AdminCourseType = { id: number; name: string };

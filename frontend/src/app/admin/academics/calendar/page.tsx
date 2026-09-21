@@ -5,7 +5,23 @@ import { Container } from "@/components/ui/Container";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AcademicEntityForm } from "@/components/academics/AcademicEntityForm";
+import { SessionEditToggle } from "@/components/academics/SessionEditToggle";
 import { CmsActionButton } from "@/components/cms/CmsActionButton";
+import type { AdminAcademicSession } from "@/lib/api/admin-academics";
+
+/** Mirrors AcademicSession::isAcceptingApplications() exactly — see that model for the reasoning. */
+function admissionsStatus(s: AdminAcademicSession): { label: string; tone: "success" | "amber" | "muted" } {
+  if (!s.is_current) return { label: "Not current session", tone: "muted" };
+
+  const now = new Date();
+  if (s.admissions_open_at && now < new Date(s.admissions_open_at)) {
+    return { label: "Opens " + new Date(s.admissions_open_at).toLocaleDateString(), tone: "amber" };
+  }
+  if (s.admissions_close_at && now > new Date(s.admissions_close_at)) {
+    return { label: "Closed " + new Date(s.admissions_close_at).toLocaleDateString(), tone: "muted" };
+  }
+  return { label: "Accepting applications", tone: "success" };
+}
 
 export default async function AdminAcademicCalendarPage() {
   const session = await requireSession("/admin/academics/calendar");
@@ -43,21 +59,30 @@ export default async function AdminAcademicCalendarPage() {
             { name: "start_date", label: "Start date", type: "date" },
             { name: "end_date", label: "End date", type: "date" },
             { name: "is_current", label: "Current session", type: "checkbox" },
+            { name: "admissions_open_at", label: "Admissions open at (leave blank = no lower bound)", type: "datetime-local" },
+            { name: "admissions_close_at", label: "Admissions close at (leave blank = no upper bound)", type: "datetime-local" },
           ]}
         />
         {sessions.length === 0 ? (
           <EmptyState title="No sessions yet" description="Create the first one above." />
         ) : (
           <div className="flex flex-col gap-2">
-            {sessions.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-lg border border-border bg-white p-3">
-                <p className="text-sm text-ink">{s.name}</p>
-                <div className="flex items-center gap-2">
-                  {s.is_current && <Badge tone="success">Current</Badge>}
-                  <CmsActionButton href={`/api/admin/academics/academic-sessions/${s.id}`} method="DELETE" label="Delete" confirmMessage="Delete this session?" />
+            {sessions.map((s) => {
+              const status = admissionsStatus(s);
+              return (
+                <div key={s.id} className="flex flex-col gap-2 rounded-lg border border-border bg-white p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-ink">{s.name}</p>
+                    <div className="flex items-center gap-2">
+                      {s.is_current && <Badge tone="success">Current</Badge>}
+                      <Badge tone={status.tone}>{status.label}</Badge>
+                      <CmsActionButton href={`/api/admin/academics/academic-sessions/${s.id}`} method="DELETE" label="Delete" confirmMessage="Delete this session?" />
+                    </div>
+                  </div>
+                  <SessionEditToggle session={s} />
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

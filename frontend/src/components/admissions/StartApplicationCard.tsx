@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
-export function StartApplicationCard() {
+export function StartApplicationCard({
+  isOpen = true,
+  closedMessage,
+}: {
+  isOpen?: boolean;
+  closedMessage?: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,14 +43,22 @@ export function StartApplicationCard() {
         upload documents. You can save your progress and come back any
         time before submitting.
       </p>
-      {error && (
-        <p role="alert" className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-danger">
-          {error}
+      {!isOpen ? (
+        <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          {closedMessage ?? "Applications are not currently open."}
         </p>
+      ) : (
+        <>
+          {error && (
+            <p role="alert" className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-danger">
+              {error}
+            </p>
+          )}
+          <Button onClick={start} variant="primary" className="mt-6" aria-disabled={loading}>
+            {loading ? "Starting…" : "Start application"}
+          </Button>
+        </>
       )}
-      <Button onClick={start} variant="primary" className="mt-6" aria-disabled={loading}>
-        {loading ? "Starting…" : "Start application"}
-      </Button>
     </div>
   );
 }

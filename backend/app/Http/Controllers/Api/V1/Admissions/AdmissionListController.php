@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admissions;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\AcademicSession;
 use App\Models\Application;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,27 @@ use Illuminate\Http\Request;
 class AdmissionListController extends Controller
 {
     use ApiResponse;
+
+    /**
+     * Whether applications are currently open — read by the public
+     * /admissions and /admissions/application pages before anyone
+     * attempts to start one, so the "closed" state is a clear message
+     * instead of a failed form submit. Mirrors exactly what
+     * ApplicationController::store() itself checks — see
+     * AcademicSession::isAcceptingApplications().
+     */
+    public function status()
+    {
+        $session = AcademicSession::current();
+        $isOpen = $session?->isAcceptingApplications() ?? false;
+
+        return $this->success([
+            'is_open' => $isOpen,
+            'session_name' => $session?->name,
+            'admissions_open_at' => $session?->admissions_open_at,
+            'admissions_close_at' => $session?->admissions_close_at,
+        ]);
+    }
 
     public function search(Request $request)
     {

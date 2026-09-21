@@ -46,6 +46,18 @@ class ApplicationController extends Controller
             return $this->fail('No academic session is currently open for admissions.', [], 422);
         }
 
+        if (! $session->isAcceptingApplications()) {
+            $message = match (true) {
+                $session->admissions_open_at && now()->lt($session->admissions_open_at)
+                    => 'Applications for the '.$session->name.' session open on '.$session->admissions_open_at->format('j M Y, g:i a').'.',
+                $session->admissions_close_at && now()->gt($session->admissions_close_at)
+                    => 'Applications for the '.$session->name.' session closed on '.$session->admissions_close_at->format('j M Y, g:i a').'.',
+                default => 'Applications are not currently open for the '.$session->name.' session.',
+            };
+
+            return $this->fail($message, [], 422);
+        }
+
         $applicant = Auth::user()->applicant;
 
         $application = DB::transaction(function () use ($applicant, $session, $request, $numbers) {

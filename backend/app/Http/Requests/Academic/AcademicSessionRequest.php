@@ -21,6 +21,8 @@ class AcademicSessionRequest extends FormRequest
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'is_current' => ['boolean'],
+            'admissions_open_at' => ['nullable', 'date'],
+            'admissions_close_at' => ['nullable', 'date', 'after_or_equal:admissions_open_at'],
         ];
     }
 }

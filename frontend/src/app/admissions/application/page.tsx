@@ -2,7 +2,7 @@ import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getSession, getSessionToken } from "@/lib/auth/session";
-import { listApplications } from "@/lib/api/applications";
+import { listApplications, getAdmissionsStatus } from "@/lib/api/applications";
 import { getProgrammes } from "@/lib/api/academics";
 import { StartApplicationCard } from "@/components/admissions/StartApplicationCard";
 import { ApplicationWizard } from "@/components/admissions/ApplicationWizard";
@@ -44,13 +44,15 @@ export default async function ApplicantPortalPage() {
   }
 
   const token = await getSessionToken();
-  const [{ body: appsBody }, { items: programmes }] = await Promise.all([
+  const [{ body: appsBody }, { items: programmes }, { body: statusBody }] = await Promise.all([
     listApplications(token!),
     getProgrammes(),
+    getAdmissionsStatus(),
   ]);
 
   const applications = appsBody.success ? appsBody.data : [];
   const active = applications.find((a) => a.status !== "WITHDRAWN") ?? null;
+  const status = statusBody.success ? statusBody.data : null;
 
   return (
     <Container className="py-12">
@@ -60,7 +62,16 @@ export default async function ApplicantPortalPage() {
           programmes={programmes.filter((p) => p.is_active)}
         />
       ) : (
-        <StartApplicationCard />
+        <StartApplicationCard
+          isOpen={status?.is_open ?? true}
+          closedMessage={
+            status?.admissions_open_at
+              ? `Applications open ${new Date(status.admissions_open_at).toLocaleString()}.`
+              : status?.session_name
+                ? `Applications for ${status.session_name} are currently closed.`
+                : "No admission session is currently open."
+          }
+        />
       )}
     </Container>
   );

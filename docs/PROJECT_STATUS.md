@@ -1181,6 +1181,64 @@ a demo document-template upload for ICT/Super Admin.
   the document-issuance pipeline actually renders from, if that's
   wanted later.
 
+## Real date-gated admission window (2026-09-20)
+
+Abee asked "how do we open admission" — answer at the time was "flip a
+session's `is_current` flag, that's the only gate that exists." Follow-up:
+"do the necessary" to make it a real date-driven window instead. Built:
+
+- `academic_sessions` gained `admissions_open_at`/`admissions_close_at`
+  (nullable — null means no bound on that side, so every existing/seeded
+  session is unaffected until an admin actually sets dates).
+  `AcademicSession::isAcceptingApplications()` is the actual gate,
+  deliberately kept separate from `is_current` — that flag still answers
+  "which session is the institution running right now" (course
+  registration, results, etc. depend on it unchanged); the new fields
+  answer a different question, "is this session taking new applicants
+  right now."
+- `ApplicationController::store()` checks the window and returns a
+  specific message (not open yet / already closed / generic), instead of
+  the old blanket "no current session" text.
+- **Scope decision, stated explicitly in the model's docblock**: this
+  only gates *starting* a new application. An application already in
+  progress (DRAFT/PAYMENT_PENDING/PAYMENT_CONFIRMED) when the window
+  closes can still be completed, paid for, and submitted — closing a
+  window mid-form isn't the same institutional policy as refusing new
+  applicants, and nothing in the spec says otherwise. If the institution
+  wants submission itself blocked after close too, that's a separate,
+  explicit call someone needs to make.
+- New public `GET /admissions/status` endpoint so the frontend can show
+  real status before anyone attempts to start an application, not just
+  after a failed submit.
+- **Found and fixed a real gap while building this**: Academic Sessions
+  could only ever be *created* through the admin UI, never edited — the
+  backend `PATCH /academic-sessions/{id}` endpoint (with its
+  single-current-session exclusivity logic) already existed and worked,
+  the frontend simply never called it. Without fixing this, date-gating
+  would have been unusable in practice (set once at creation, then stuck
+  — an admin couldn't open/close/adjust an existing session's window
+  without deleting and recreating it, which would orphan any
+  semesters/courses/students already attached). Extended
+  `AcademicEntityForm` with an edit mode (`entityId` prop switches
+  POST→PATCH, keeps the saved values on screen instead of resetting) and
+  a `datetime-local` field type; added `SessionEditToggle.tsx`, an
+  inline expandable edit form per session row, showing a live status
+  badge (Accepting applications / Opens \<date\> / Closed \<date\> / Not
+  current session).
+- Public side: `/admissions` no longer shows a permanently-hardcoded
+  "No admission session currently open" placeholder — it was static
+  copy that never read anything, now shows the real status.
+  `/admissions/application`'s `StartApplicationCard` shows the
+  closed-state message upfront (via the new status endpoint) rather than
+  only surfacing it after a failed click — though that failure path was
+  already handled gracefully before this session, since the backend
+  error message flows straight through either way.
+- **Verified**: `tsc --noEmit`, full `next build`, `eslint` all clean.
+  Backend hand-traced only, same standing constraint — though Abee's own
+  `composer update`/`storage:link` run last session is a strong signal
+  this class of change (config + Eloquent + FormRequest + routes, no
+  exotic framework internals) will behave as traced.
+
 ## Institution Settings wired live to the public site (2026-09-20)
 
 Closes a gap that's been flagged in code comments since Phase 21 shipped:

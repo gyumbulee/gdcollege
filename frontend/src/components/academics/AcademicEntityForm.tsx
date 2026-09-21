@@ -5,22 +5,30 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 export type EntityField =
-  | { name: string; label: string; type: "text" | "number" | "date"; required?: boolean }
+  | { name: string; label: string; type: "text" | "number" | "date" | "datetime-local"; required?: boolean }
   | { name: string; label: string; type: "textarea"; required?: boolean }
   | { name: string; label: string; type: "checkbox" }
   | { name: string; label: string; type: "select"; required?: boolean; options: { value: string | number; label: string }[] };
 
-/** One generic form for every simple academic-structure entity — avoids nine near-identical hand-written forms. */
+/**
+ * One generic form for every simple academic-structure entity — avoids
+ * nine near-identical hand-written forms. Pass `entityId` to switch it
+ * into edit mode: PATCH `/{resource}/{entityId}` instead of POST
+ * `/{resource}`, and the submitted values stay on screen afterward
+ * instead of resetting to blank (there's nothing to "create again").
+ */
 export function AcademicEntityForm({
   resource,
   title,
   fields,
   defaults = {},
+  entityId,
 }: {
   resource: string;
   title: string;
   fields: EntityField[];
   defaults?: Record<string, string | number | boolean>;
+  entityId?: number;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string | number | boolean>>(defaults);
@@ -37,8 +45,9 @@ export function AcademicEntityForm({
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/admin/academics/${resource}`, {
-        method: "POST",
+      const url = entityId ? `/api/admin/academics/${resource}/${entityId}` : `/api/admin/academics/${resource}`;
+      const response = await fetch(url, {
+        method: entityId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
@@ -50,7 +59,7 @@ export function AcademicEntityForm({
       }
 
       setMessage({ tone: "success", text: result.message });
-      setValues(defaults);
+      if (!entityId) setValues(defaults);
       router.refresh();
     } finally {
       setSubmitting(false);
@@ -113,7 +122,7 @@ export function AcademicEntityForm({
 
       <div className="mt-4">
         <Button type="submit" variant="secondary" aria-disabled={submitting}>
-          {submitting ? "Saving…" : `Create ${title.toLowerCase()}`}
+          {submitting ? "Saving…" : entityId ? "Save changes" : `Create ${title.toLowerCase()}`}
         </Button>
       </div>
     </form>

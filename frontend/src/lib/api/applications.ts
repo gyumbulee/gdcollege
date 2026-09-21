@@ -6,6 +6,18 @@ type Envelope<T> =
   | { success: true; message: string; data: T }
   | { success: false; message: string; errors: Record<string, string[]> };
 
+export type AdmissionsStatus = {
+  is_open: boolean;
+  session_name: string | null;
+  admissions_open_at: string | null;
+  admissions_close_at: string | null;
+};
+
+/** Public — no token. Read before showing the "Start an Application" CTA so a closed window is a clear message, not a failed submit. */
+export async function getAdmissionsStatus() {
+  return apiFetch<AdmissionsStatus>("/admissions/status");
+}
+
 export async function listApplications(token: string) {
   return apiFetch<Application[]>("/applications", { token });
 }

@@ -120,6 +120,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/programmes', [ProgrammeController::class, 'index']);
     Route::get('/programmes/{programme}', [ProgrammeController::class, 'show']);
     Route::middleware('throttle:public-lookup')->get('/admission-list/search', [AdmissionListController::class, 'search']);
+    Route::get('/admissions/status', [AdmissionListController::class, 'status']);
 
     /*
     |----------------------------------------------------------------------
