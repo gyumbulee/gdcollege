@@ -29,8 +29,8 @@
 
 export const institutionConfig = {
   identity: {
-    formalName: "Goran Dutse College of General Studies Wase",
-    shortName: "GD College Wase",
+    formalName: "Wase Rock College of General Studies Wase",
+    shortName: "Wase Rock College",
     /** Set once confirmed by the Registrar. Leave null rather than guess. */
     motto: null as string | null,
   },

@@ -13,7 +13,7 @@ return [
     | assumption anywhere else (see Master Implementation Brief §36).
     |
     */
-    'matric_number_format' => env('STUDENTS_MATRIC_NUMBER_FORMAT', 'GDCW/{session}/{seq}'),
+    'matric_number_format' => env('STUDENTS_MATRIC_NUMBER_FORMAT', 'WRC/{session}/{seq}'),
     'matric_number_sequence_padding' => 5,
 
 ];

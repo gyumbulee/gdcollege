@@ -1,7 +1,7 @@
 {
     "name": "gdcollege/backend",
     "type": "project",
-    "description": "GD College Wase — Institution Management Platform API (Laravel backend).",
+    "description": "Wase Rock College — Institution Management Platform API (Laravel backend).",
     "keywords": ["laravel", "gdcollege", "api"],
     "license": "proprietary",
     "require": {

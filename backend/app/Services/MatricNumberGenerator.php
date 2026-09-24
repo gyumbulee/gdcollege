@@ -23,7 +23,7 @@ class MatricNumberGenerator
             return str_replace(
                 ['{session}', '{seq}'],
                 [$sessionDigits, str_pad((string) $sequence, $padding, '0', STR_PAD_LEFT)],
-                config('students.matric_number_format', 'GDCW/{session}/{seq}')
+                config('students.matric_number_format', 'WRC/{session}/{seq}')
             );
         });
     }

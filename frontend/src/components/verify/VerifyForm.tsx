@@ -19,7 +19,7 @@ export function VerifyForm() {
       <input
         type="text"
         required
-        placeholder="e.g. GDCW-2026-000123"
+        placeholder="e.g. WRC-2026-000123"
         value={code}
         onChange={(e) => setCode(e.target.value)}
         aria-label="Document verification code"

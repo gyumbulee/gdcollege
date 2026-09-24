@@ -77,4 +77,42 @@ class AcademicSession extends Model
 
         return $session?->isAcceptingApplications() ? $session : null;
     }
+
+    /**
+     * A single human-facing status for the public admissions grid
+     * (§5/§12 of the spec) — every "what does this session's card say"
+     * decision lives here, once, rather than being recomputed in the
+     * frontend. `status` is a stable machine key the frontend can use
+     * for badge colour; `label` is the display text.
+     *
+     * - is_current + isAcceptingApplications() → 'open'
+     * - is_current + not yet open (admissions_open_at in the future) → 'scheduled'
+     * - is_current + window already closed → 'closed'
+     * - not current + start_date in the future → 'upcoming' (created ahead of time, hasn't become current yet)
+     * - anything else not current → 'past' (the institution's only signal that a
+     *   non-current session is "done" rather than "not started yet" is its own
+     *   start_date; there's no separate "session lifecycle" field to check)
+     */
+    public function publicAdmissionStatus(): array
+    {
+        $now = now();
+
+        if ($this->is_current) {
+            if ($this->isAcceptingApplications()) {
+                return ['status' => 'open', 'label' => 'Accepting applications'];
+            }
+
+            if ($this->admissions_open_at && $now->lt($this->admissions_open_at)) {
+                return ['status' => 'scheduled', 'label' => 'Opens '.$this->admissions_open_at->format('j M Y')];
+            }
+
+            return ['status' => 'closed', 'label' => 'Applications closed'];
+        }
+
+        if ($this->start_date && $now->lt($this->start_date)) {
+            return ['status' => 'upcoming', 'label' => 'Upcoming'];
+        }
+
+        return ['status' => 'past', 'label' => 'Closed'];
+    }
 }

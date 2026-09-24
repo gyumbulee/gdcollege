@@ -18,6 +18,24 @@ export async function getAdmissionsStatus() {
   return apiFetch<AdmissionsStatus>("/admissions/status");
 }
 
+export type PublicAdmissionSession = {
+  id: number;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+  admissions_open_at: string | null;
+  admissions_close_at: string | null;
+  /** Computed server-side — see AcademicSession::publicAdmissionStatus(). */
+  status: "open" | "scheduled" | "closed" | "upcoming" | "past";
+  label: string;
+};
+
+/** Public — no token. Every admission cycle (past, current, upcoming) for the /admissions grid. */
+export async function getPublicAdmissionSessions() {
+  return apiFetch<PublicAdmissionSession[]>("/admissions/sessions");
+}
+
 export async function listApplications(token: string) {
   return apiFetch<Application[]>("/applications", { token });
 }

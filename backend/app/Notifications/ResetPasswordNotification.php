@@ -36,7 +36,7 @@ class ResetPasswordNotification extends Notification
         $url = rtrim(config('app.frontend_url'), '/').'/reset-password?token='.$this->token.'&email='.urlencode($notifiable->getEmailForPasswordReset());
 
         return (new MailMessage)
-            ->subject('Reset your GD College Wase password')
+            ->subject('Reset your Wase Rock College password')
             ->greeting('Hello '.$notifiable->name.',')
             ->line('You are receiving this email because we received a password reset request for your account.')
             ->action('Reset Password', $url)

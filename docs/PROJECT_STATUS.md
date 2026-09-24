@@ -1,4 +1,4 @@
-# GD College Wase — Project Status & Gap Analysis
+# Wase Rock College — Project Status & Gap Analysis
 
 Last updated: first real `composer update` attempt (XAMPP) — Laravel
 framework bumped to ^13.0 (11.x is now blocked by security advisories),
@@ -1180,6 +1180,88 @@ a demo document-template upload for ICT/Super Admin.
   yet started: extending the demo template-upload file into something
   the document-issuance pipeline actually renders from, if that's
   wanted later.
+
+## Institution renamed to Wase Rock College (2026-09-20)
+
+Full platform-wide rename, confirmed by Abee after a logo-design detour
+that didn't land (the crest concept work — see chat, not committed to
+the repo, it was chat-only visual exploration). New identity:
+
+- Formal name: **Wase Rock College of General Studies Wase**
+- Short name: **Wase Rock College**
+- Abbreviation used in generated identifiers: **WRC** (was GDCW)
+
+Swept every source file for "Goran Dutse", "GD College", and "GDCW" —
+12 files, all plain display text/config defaults (institution.config.ts,
+`InstitutionSettingsController::row()`, `.env.example`, both root and
+package READMEs, `HealthController`'s health-check message,
+`ResetPasswordNotification`'s email subject, `globals.css`'s file
+header comment, `composer.json`'s description field, and the
+matric-number/payment-reference format prefixes in
+`MatricNumberGenerator`/`PaymentReferenceGenerator`/`config/students.php`).
+
+**Found and fixed a related bug while doing this**: `.env.example`
+documented `INSTITUTION_FORMAL_NAME`/`INSTITUTION_SHORT_NAME` with a
+comment claiming they're "kept here for backend-rendered content" —
+false, nothing in the codebase ever read them; `row()` had the name
+hardcoded directly instead. Added `config/institution.php` so those env
+vars are now real, and `row()` reads from it — a future rename is a
+one-line env change instead of a controller-code hunt.
+
+**Deliberately NOT touched** — infrastructure identifiers, not display
+branding: the `gdcollege` repo/folder name, `DB_DATABASE=gdcollege`, and
+`composer.json`'s package name `gdcollege/backend`. Renaming any of
+those is a much bigger, separate decision (breaks existing deploy
+scripts/DB connections/Composer autoload assumptions) that wasn't asked
+for.
+
+**Important caveat if Abee already has a live database**: `row()`'s
+`Institution::first() ?? Institution::create([...])` only creates the
+default row when none exists yet — it does not retroactively rename an
+already-seeded institution. Since Abee has been running this for real
+(composer install succeeded, admission window and admissions grid
+already applied), there is likely already a persisted `institutions`
+row with the OLD name. That needs updating directly through
+`/admin/institution` (already fully functional) — this code change only
+fixes what a *fresh* install seeds.
+
+**Verified**: `tsc --noEmit`, full `next build`, `eslint` all clean on
+every touched frontend file. Backend: pure string/config swaps, hand-
+traced, same standing constraint as everything else — no logic changed.
+
+## Public admissions grid (2026-09-20)
+
+Abee asked for the public `/admissions` page to show a decorated grid of
+admission cycles — past and current, each stating its status, clickable
+for details, with "Start Application" on the currently open one.
+
+- `AcademicSession::publicAdmissionStatus()` — the single place that
+  decides what a session's public-facing status is: `open` (is_current +
+  accepting), `scheduled` (is_current, opens later), `closed` (is_current,
+  window already passed), `upcoming` (not yet current, `start_date` in
+  the future), or `past` (everything else not current). Returns both a
+  stable machine key (badge colour) and a display label — computed once
+  server-side, not re-derived in the frontend.
+- New public `GET /admissions/sessions` — every session with that status
+  attached, ordered current-first then most recent.
+- `/admissions` rebuilt as a card grid (lucide-react icon + status badge
+  per card, same visual language as the Events/News list pages) instead
+  of a single current-status block.
+- New `/admissions/sessions/[id]` detail page — session dates, the
+  admissions window, and "Start an Application" only when that
+  session's status is `open` (points elsewhere — the admission-list
+  lookup — for every other status).
+- **Verified**: `tsc --noEmit`, full `next build`, `eslint` all clean.
+  Backend (one model method + one controller method + one route) hand-
+  traced only, same standing constraint.
+- **Repo note**: origin/main had moved again since last session (Abee
+  applied the admission-window zip, commit "Admissions creation
+  configured") — reset the sandbox clone to origin/main before starting,
+  same procedure as last time. Re-removed `backend/README (2).md`,
+  which had reappeared because it's only ever deleted locally in this
+  sandbox, never actually removed from Abee's own working copy — worth
+  reminding Abee to `git rm` it for real at some point so it stops
+  needing to be re-deleted every session.
 
 ## Real date-gated admission window (2026-09-20)
 

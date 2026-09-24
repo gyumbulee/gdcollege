@@ -76,8 +76,8 @@ class InstitutionSettingsController extends Controller
     private function row(): Institution
     {
         return Institution::first() ?? Institution::create([
-            'formal_name' => 'Goran Dutse College of General Studies Wase',
-            'short_name' => 'GD College Wase',
+            'formal_name' => config('institution.formal_name'),
+            'short_name' => config('institution.short_name'),
             'country' => 'Nigeria',
         ]);
     }

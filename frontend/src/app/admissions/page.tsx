@@ -1,23 +1,36 @@
 import Link from "next/link";
+import { CalendarCheck, Clock, XCircle, CalendarClock, Archive } from "lucide-react";
 import { PublicPageHeader } from "@/components/layout/PublicPageHeader";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { getAdmissionsStatus } from "@/lib/api/applications";
+import { getPublicAdmissionSessions, type PublicAdmissionSession } from "@/lib/api/applications";
+
+const STATUS_STYLE: Record<
+  PublicAdmissionSession["status"],
+  { icon: typeof CalendarCheck; tone: "success" | "amber" | "sky" | "muted" }
+> = {
+  open: { icon: CalendarCheck, tone: "success" },
+  scheduled: { icon: Clock, tone: "amber" },
+  closed: { icon: XCircle, tone: "muted" },
+  upcoming: { icon: CalendarClock, tone: "sky" },
+  past: { icon: Archive, tone: "muted" },
+};
 
 export default async function AdmissionsPage() {
-  const { body } = await getAdmissionsStatus();
-  const status = body.success ? body.data : null;
+  const { body } = await getPublicAdmissionSessions();
+  const sessions = body.success ? body.data : [];
+  const openSession = sessions.find((s) => s.status === "open");
 
   return (
     <>
       <PublicPageHeader
         crumbs={[{ label: "Home", href: "/" }, { label: "Admissions" }]}
         title="Admissions"
-        description="How to apply, what's required, and current admission status."
+        description="Current and past admission cycles — select one for details."
         actions={
-          status?.is_open ? (
+          openSession ? (
             <Button href="/admissions/application" variant="primary">
               Start an Application
             </Button>
@@ -37,29 +50,38 @@ export default async function AdmissionsPage() {
           </Link>
         </div>
 
-        {status?.is_open ? (
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-white p-6">
-            <Badge tone="success">Open</Badge>
-            <div>
-              <p className="text-sm font-medium text-ink">
-                Applications are open for the {status.session_name} session.
-              </p>
-              {status.admissions_close_at && (
-                <p className="mt-1 text-sm text-muted">
-                  Closes {new Date(status.admissions_close_at).toLocaleString()}.
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
+        {sessions.length === 0 ? (
           <EmptyState
-            title={status?.session_name ? `Applications are currently closed for ${status.session_name}` : "No admission session currently open"}
-            description={
-              status?.admissions_open_at
-                ? `Applications open ${new Date(status.admissions_open_at).toLocaleString()}.`
-                : "Application periods, deadlines, and current-session details will appear here once configured by the Admissions Office."
-            }
+            title="No admission sessions yet"
+            description="Admission cycles will appear here once configured by the Admissions Office."
           />
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {sessions.map((session) => {
+              const { icon: Icon, tone } = STATUS_STYLE[session.status];
+              return (
+                <Link
+                  key={session.id}
+                  href={`/admissions/sessions/${session.id}`}
+                  className="group flex flex-col gap-4 rounded-lg border border-border bg-white p-6 transition-colors hover:border-sky-dark hover:bg-sky-light/20"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-light text-sky-dark transition-colors group-hover:bg-sky-dark group-hover:text-white">
+                      <Icon size={22} strokeWidth={1.75} aria-hidden />
+                    </span>
+                    {session.is_current && <Badge tone="sky">Current session</Badge>}
+                  </div>
+                  <div>
+                    <p className="font-[family-name:var(--font-display)] text-lg text-ink">{session.name}</p>
+                    <div className="mt-2">
+                      <Badge tone={tone}>{session.label}</Badge>
+                    </div>
+                  </div>
+                  <span className="mt-auto text-sm text-sky-dark">View details →</span>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </Container>
     </>

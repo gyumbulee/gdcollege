@@ -1,6 +1,6 @@
-# GD College Wase — Integrated Institution Management Platform
+# Wase Rock College — Integrated Institution Management Platform
 
-Goran Dutse College of General Studies Wase — public website, applicant
+Wase Rock College of General Studies Wase — public website, applicant
 portal, admissions, SIS, academics, course registration, examinations,
 finance, staff portals, registrar, documents, clearance, CMS, and
 management reporting, as one platform.

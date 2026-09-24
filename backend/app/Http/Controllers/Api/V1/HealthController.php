@@ -21,7 +21,7 @@ class HealthController extends Controller
     {
         return response()->json([
             'success' => true,
-            'message' => 'GD College Wase API is running.',
+            'message' => 'Wase Rock College API is running.',
             'data' => [
                 'status' => 'ok',
                 'timestamp' => now()->toIso8601String(),

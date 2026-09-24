@@ -1,4 +1,4 @@
-# GD College Wase — Backend (Laravel)
+# Wase Rock College — Backend (Laravel)
 
 ## Important: this skeleton was hand-authored, not `composer install`-ed
 
@@ -87,7 +87,7 @@ php artisan migrate
 # 5. Run it
 php artisan serve
 # → http://localhost:8000/api/v1/health should return
-#   { "success": true, "message": "GD College Wase API is running.", ... }
+#   { "success": true, "message": "Wase Rock College API is running.", ... }
 ```
 
 ### If `composer install`/`composer update` fails here

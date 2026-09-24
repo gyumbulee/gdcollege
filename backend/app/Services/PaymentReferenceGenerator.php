@@ -17,7 +17,7 @@ class PaymentReferenceGenerator
     public function generate(): string
     {
         do {
-            $reference = 'GDCW-PAY-'.strtoupper(Str::random(10));
+            $reference = 'WRC-PAY-'.strtoupper(Str::random(10));
         } while (Payment::where('reference', $reference)->exists());
 
         return $reference;

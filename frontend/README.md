@@ -1,4 +1,4 @@
-# GD College Wase — Frontend (Next.js)
+# Wase Rock College — Frontend (Next.js)
 
 ## Run it
 

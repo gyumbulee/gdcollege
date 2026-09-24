@@ -40,6 +40,32 @@ class AdmissionListController extends Controller
         ]);
     }
 
+    /**
+     * The public admissions grid — every session (current, upcoming,
+     * past), each carrying its own computed status so the frontend never
+     * has to re-derive "is this one open" itself. See
+     * AcademicSession::publicAdmissionStatus().
+     */
+    public function sessions()
+    {
+        $sessions = AcademicSession::orderByDesc('is_current')
+            ->orderByDesc('start_date')
+            ->get()
+            ->map(function (AcademicSession $session) {
+                return array_merge([
+                    'id' => $session->id,
+                    'name' => $session->name,
+                    'start_date' => $session->start_date,
+                    'end_date' => $session->end_date,
+                    'is_current' => $session->is_current,
+                    'admissions_open_at' => $session->admissions_open_at,
+                    'admissions_close_at' => $session->admissions_close_at,
+                ], $session->publicAdmissionStatus());
+            });
+
+        return $this->success($sessions);
+    }
+
     public function search(Request $request)
     {
         $request->validate(['application_number' => ['required', 'string']]);
