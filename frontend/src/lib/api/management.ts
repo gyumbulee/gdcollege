@@ -43,6 +43,7 @@ export type ManagementDashboard = {
   };
   graduation: {
     total_graduated: number;
+    trend: Record<string, number>;
   };
 };
 

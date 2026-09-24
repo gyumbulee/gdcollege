@@ -11,6 +11,10 @@ use RuntimeException;
 
 class ClearanceService
 {
+    public function __construct(private readonly NotificationDispatcher $notifications)
+    {
+    }
+
     /**
      * One request per student is active at a time — repeating the
      * request returns the existing one rather than creating a duplicate
@@ -52,7 +56,7 @@ class ClearanceService
             throw new RuntimeException('This clearance stage has already been decided.');
         }
 
-        return DB::transaction(function () use ($item, $staff, $decision, $remark) {
+        $item = DB::transaction(function () use ($item, $staff, $decision, $remark) {
             $item->update([
                 'status' => $decision,
                 'remark' => $remark,
@@ -64,5 +68,18 @@ class ClearanceService
 
             return $item->fresh();
         });
+
+        $studentUserId = $item->clearanceRequest->student->user_id;
+        $stage = ucfirst(strtolower(str_replace('_', ' ', $item->stage)));
+
+        $this->notifications->toUser(
+            $studentUserId,
+            'clearance.updated',
+            $decision === ClearanceItem::STATUS_APPROVED ? "{$stage} clearance approved" : "{$stage} clearance returned",
+            $remark ?: null,
+            '/student/clearance'
+        );
+
+        return $item;
     }
 }

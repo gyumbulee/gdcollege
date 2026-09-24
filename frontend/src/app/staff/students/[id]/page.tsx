@@ -53,7 +53,14 @@ export default async function StaffStudentDetailPage({
           <p className="text-sm text-muted">{student.matric_number}</p>
           <h1 className="font-[family-name:var(--font-display)] text-2xl text-ink">{student.user.name}</h1>
         </div>
-        <Badge tone="sky">{student.status}</Badge>
+        <div className="flex flex-col items-end gap-1">
+          <Badge tone="sky">{student.status}</Badge>
+          {student.status === "GRADUATED" && student.graduated_at && (
+            <span className="text-xs text-muted">
+              {new Date(student.graduated_at).toLocaleDateString()}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">

@@ -13,6 +13,7 @@ class StudentResource extends JsonResource
             'id' => $this->id,
             'matric_number' => $this->matric_number,
             'status' => $this->status,
+            'graduated_at' => $this->graduated_at,
             'user' => $this->whenLoaded('user', fn () => [
                 'name' => $this->user->name,
                 'email' => $this->user->email,

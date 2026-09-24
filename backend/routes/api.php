@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Academic\AcademicSessionController;
 use App\Http\Controllers\Api\V1\Academic\CourseController;
 use App\Http\Controllers\Api\V1\Academic\CourseOfferingController;
+use App\Http\Controllers\Api\V1\Academic\StaffDirectoryController;
 use App\Http\Controllers\Api\V1\Academic\CourseTypeController;
 use App\Http\Controllers\Api\V1\Academic\DepartmentController;
 use App\Http\Controllers\Api\V1\Academic\LevelController;
@@ -204,6 +205,7 @@ Route::prefix('v1')->group(function () {
             ->except(['store', 'update', 'destroy']);
 
         Route::middleware('permission:academic_structure.manage')->group(function () {
+            Route::get('/staff-directory', [StaffDirectoryController::class, 'index']);
             Route::apiResource('schools', SchoolController::class)->only(['store', 'update', 'destroy']);
             Route::apiResource('departments', DepartmentController::class)->only(['store', 'update', 'destroy']);
             Route::apiResource('programmes', ProgrammeController::class)->only(['store', 'update', 'destroy']);

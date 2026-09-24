@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/Container";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CreatePageForm } from "@/components/cms/CreatePageForm";
+import { PageEditToggle } from "@/components/cms/PageEditToggle";
 import { CmsActionButton } from "@/components/cms/CmsActionButton";
 
 export default async function AdminCmsPagesPage() {
@@ -30,15 +31,18 @@ export default async function AdminCmsPagesPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {body.data.map((page) => (
-            <div key={page.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-white p-4">
-              <div>
-                <p className="font-medium text-ink">{page.title}</p>
-                <p className="text-xs text-muted">/{page.slug}</p>
+            <div key={page.id} className="flex flex-col gap-2 rounded-lg border border-border bg-white p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium text-ink">{page.title}</p>
+                  <p className="text-xs text-muted">/{page.slug}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge tone={page.status === "PUBLISHED" ? "success" : "muted"}>{page.status}</Badge>
+                  <CmsActionButton href={`/api/admin/cms/pages/${page.id}`} method="DELETE" label="Delete" confirmMessage="Delete this page?" />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge tone={page.status === "PUBLISHED" ? "success" : "muted"}>{page.status}</Badge>
-                <CmsActionButton href={`/api/admin/cms/pages/${page.id}`} method="DELETE" label="Delete" confirmMessage="Delete this page?" />
-              </div>
+              <PageEditToggle page={page} />
             </div>
           ))}
         </div>

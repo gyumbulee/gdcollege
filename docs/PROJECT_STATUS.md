@@ -1,12 +1,15 @@
 # Wase Rock College — Project Status & Gap Analysis
 
-Last updated: first real `composer update` attempt (XAMPP) — Laravel
-framework bumped to ^13.0 (11.x is now blocked by security advisories),
-storage:link confirmed working. See "First real execution — composer
-resolution fixed (2026-09-20)" below. All phases that can be built as
-code in this sandbox are done — actually running this end-to-end
-(migrate, seed, serve) is the next real milestone, followed by
-Production Deployment and final documentation/handover.
+Last updated: every small deferred gap closed (notification triggers,
+change-password page, staff pickers, Pages edit UI, graduation
+tracking) — see "Small deferred gaps closed, all at once (2026-09-21)"
+below, including a real pre-existing bug found and fixed along the way
+(a Stringable-vs-string `===` comparison that silently disabled the
+graduation clearance gate). All phases that can be built as code in
+this sandbox are done, with no small gaps currently tracked — actually
+running this end-to-end (migrate, seed, serve) is the next real
+milestone, followed by Production Deployment and final
+documentation/handover.
 
 ## Repository audit finding (important)
 
@@ -1181,6 +1184,87 @@ a demo document-template upload for ICT/Super Admin.
   the document-issuance pipeline actually renders from, if that's
   wanted later.
 
+## Small deferred gaps closed, all at once (2026-09-21)
+
+Abee asked to close every item on the "small deliberately-deferred
+gaps" list from earlier sessions, once and for all. All five are done:
+
+**1. Notification triggers — turned out to be 4 missing, not 5.**
+"Important announcement" was already wired (found while investigating —
+`AnnouncementController::publish()` → `fanOutAnnouncement()`); the docs
+were stale. Closed the real remaining four:
+- Course registration approved/returned → `StaffCourseRegistrationController`
+- Clearance stage updated → `ClearanceService::decide()`
+- Document ready → `DocumentIssuanceService::issue()` (one choke point,
+  covers all 7 document types)
+- Course registration opened → genuinely date-driven (unlike the other
+  seven, nothing in a request is "the moment it happened"), so this
+  needed real new infrastructure: `App\Console\Commands\
+  NotifyRegistrationOpened`, a `registration_opened_notified_at` column
+  on `semesters` (migration, prevents double-notifying across scheduler
+  runs), and `Schedule::command(...)->everyFifteenMinutes()` in
+  `routes/console.php`. **Requires a real cron entry** (`php artisan
+  schedule:run` every minute) to ever actually fire in production —
+  documented in `backend/README.md`'s new "Scheduled tasks" section,
+  same category of easy-to-miss step as `storage:link`.
+
+All 8 of §25's listed events are now wired — `NotificationDispatcher`'s
+docblock updated to stop claiming "3 of 8" (which, again, was already
+wrong before this session started).
+
+**2. Change-password frontend page.** New `/account` page (any signed-in
+role) + `ChangePasswordForm.tsx`, calling the Phase 14 backend endpoint
+that already existed with no frontend. Linked from the header (name is
+now a link), mobile nav, and the portal hub.
+
+**3. Staff pickers.** Turned out to be one gap, not two — Announcements
+target audience *types* (ALL/STUDENTS/STAFF/...), never individual
+staff, so there was nothing to fix there; the stale note was wrong about
+that half. The real one: Course Offerings' lecturer field was a raw
+numeric user ID, because the only staff-listing endpoint
+(`Admin\UserManagementController::index()`) is gated by `users.manage`
+— ICT/Super Admin only, not the Academic Officer/Registrar who actually
+manage course offerings. Rather than loosen that endpoint's exposure,
+added a narrower one: new `GET /staff-directory` (name+email only,
+capped at 50), gated by the same `academic_structure.manage` permission
+Course Offerings itself uses. Frontend: replaced the numeric input with
+a real `<select>`.
+
+**4. Pages in-place edit UI.** Same shape of gap as Academic Sessions
+before `SessionEditToggle.tsx` — the backend `PATCH` endpoint (and its
+Next.js proxy) already worked, `/admin/cms/pages` just never called it.
+New `PageEditToggle.tsx`, same inline-expand pattern.
+
+**5. Graduation date/timeline tracking.** New `graduated_at` column on
+`students`, set the moment `StudentController::updateStatus()` actually
+transitions a student to GRADUATED (and cleared if later corrected away
+from it). `ManagementDashboardController::graduationStats()` now
+returns a real month-by-month trend instead of just a total —
+`graduation_trend` surfaced on `/management/dashboard` by reusing the
+existing `BreakdownCard` component (no new charting dependency pulled
+in for one chart). Student status badge also now shows the graduation
+date on the staff student-detail page.
+
+**Found and fixed a real, previously-invisible bug while doing #5**:
+`StudentController::updateStatus()`'s clearance gate —
+`if ($request->string('status') === Student::STATUS_GRADUATED)` —
+compared a `Stringable` object against a plain string with `===`. That
+comparison is *always* false (different types), so the "graduation
+requires a COMPLETED clearance first" check had silently never fired,
+for as long as this endpoint has existed. An admin could set a student
+to GRADUATED with zero completed clearance and the guard would let it
+through every time. Fixed by comparing against `$request->input()`
+instead. This was caught by hand-tracing my own new code against the
+existing code right next to it, not by execution — worth remembering
+that pattern (comparing a freshly-written conditional against a
+structurally identical one two lines above) as a real way to catch this
+class of bug without ever running PHP.
+
+**Verified**: `tsc --noEmit`, full `next build`, `eslint` all clean on
+every touched frontend file (13 files). Backend (13 files) hand-traced
+line-by-line, including deliberately re-checking every `NotificationDispatcher::toUser()`
+call's argument order against its actual signature.
+
 ## Institution renamed to Wase Rock College (2026-09-20)
 
 Full platform-wide rename, confirmed by Abee after a logo-design detour
@@ -1520,10 +1604,13 @@ more application code:
    step 1 is done, so it can truthfully say "verified working" rather
    than "verified against a stub."
 
-Small, deliberately-deferred gaps that don't block any of the above:
-Graduation date/timeline tracking (no `graduated_at` field), a frontend
-account/settings page for the Phase 14 change-password endpoint, 5 of
-the 8 notification triggers from §25 still unwired (mechanical to add),
-Announcement/Course-Offering staff pickers (both need the same small
-"filter staff by role" endpoint addition), Pages have no in-place edit
-UI.
+Small, deliberately-deferred gaps list from earlier sessions: all closed
+as of 2026-09-21 — see "Small deferred gaps closed, all at once
+(2026-09-21)" above for what each one actually turned out to involve
+(a couple were smaller than documented — announcement staff pickers and
+one notification trigger didn't actually need work; a couple were
+bigger — the registration-opened trigger needed a real scheduled
+command + cron requirement, and closing the graduation gap surfaced a
+genuine pre-existing bug in the clearance-gate check). No small gaps
+currently tracked; the next thing to look for is whatever turns up once
+real execution (step 1 above) actually happens.

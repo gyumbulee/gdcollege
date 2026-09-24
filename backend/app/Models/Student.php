@@ -20,8 +20,13 @@ class Student extends Model
 
     protected $fillable = [
         'user_id', 'application_id', 'matric_number', 'programme_id', 'current_level_id',
-        'admission_academic_session_id', 'status',
+        'admission_academic_session_id', 'status', 'graduated_at',
     ];
+
+    protected function casts(): array
+    {
+        return ['graduated_at' => 'datetime'];
+    }
 
     public function user(): BelongsTo
     {

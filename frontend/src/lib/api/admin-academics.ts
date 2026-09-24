@@ -44,3 +44,10 @@ export function getAdminCourses(token: string) {
 export function getAdminCourseOfferings(token: string) {
   return apiFetch<AdminCourseOffering[]>("/course-offerings", { token });
 }
+
+export type StaffDirectoryEntry = { id: number; name: string; email: string };
+
+export function getStaffDirectory(token: string, role?: string) {
+  const qs = role ? `?role=${encodeURIComponent(role)}` : "";
+  return apiFetch<StaffDirectoryEntry[]>(`/staff-directory${qs}`, { token });
+}

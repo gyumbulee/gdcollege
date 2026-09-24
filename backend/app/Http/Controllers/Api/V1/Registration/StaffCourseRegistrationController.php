@@ -8,6 +8,7 @@ use App\Http\Resources\CourseRegistrationResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\CourseRegistration;
 use App\Services\AuditLogger;
+use App\Services\NotificationDispatcher;
 use Illuminate\Http\Request;
 
 /**
@@ -55,7 +56,7 @@ class StaffCourseRegistrationController extends Controller
         return $this->success(new CourseRegistrationResource($courseRegistration->load(self::WITH)));
     }
 
-    public function approve(CourseRegistration $courseRegistration, AuditLogger $audit)
+    public function approve(CourseRegistration $courseRegistration, AuditLogger $audit, NotificationDispatcher $notifications)
     {
         $this->authorize('approve', $courseRegistration);
 
@@ -71,10 +72,18 @@ class StaffCourseRegistrationController extends Controller
 
         $audit->log('course_registrations.approve', $courseRegistration);
 
+        $notifications->toUser(
+            $courseRegistration->student->user_id,
+            'course_registrations.approved',
+            'Course registration approved',
+            'Your course registration has been approved.',
+            '/student/registration'
+        );
+
         return $this->success(new CourseRegistrationResource($courseRegistration->fresh(self::WITH)), 'Registration approved.');
     }
 
-    public function reject(RegistrationDecisionRequest $request, CourseRegistration $courseRegistration, AuditLogger $audit)
+    public function reject(RegistrationDecisionRequest $request, CourseRegistration $courseRegistration, AuditLogger $audit, NotificationDispatcher $notifications)
     {
         $this->authorize('reject', $courseRegistration);
 
@@ -88,6 +97,14 @@ class StaffCourseRegistrationController extends Controller
         ]);
 
         $audit->log('course_registrations.reject', $courseRegistration, null, ['reason' => $request->input('reason')]);
+
+        $notifications->toUser(
+            $courseRegistration->student->user_id,
+            'course_registrations.rejected',
+            'Course registration returned',
+            $request->input('reason') ? 'Returned: '.$request->input('reason') : 'Your course registration was returned for changes.',
+            '/student/registration'
+        );
 
         return $this->success(new CourseRegistrationResource($courseRegistration->fresh(self::WITH)), 'Registration returned to student.');
     }

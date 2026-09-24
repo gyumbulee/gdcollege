@@ -64,6 +64,28 @@ public assets on local disk behind a CDN but move only private
 applicant documents to S3 — since `UPLOADS_DISK` and
 `PRIVATE_UPLOADS_DISK` are two separate switches.
 
+## Scheduled tasks
+
+One notification (§25's "course registration opened" — see
+`App\Console\Commands\NotifyRegistrationOpened`) is genuinely date-
+driven rather than firing inside a request, so it needs Laravel's
+scheduler actually running. Same category of easy-to-miss step as
+`storage:link` above — the code is correct either way, but silently
+does nothing without this:
+
+```bash
+# Production: one crontab entry, once
+* * * * * cd /path-to-backend && php artisan schedule:run >> /dev/null 2>&1
+
+# Local dev: keep this running instead (no real cron needed)
+php artisan schedule:work
+```
+
+Skip this and every other §25 notification still fires normally (they're
+all triggered inside a request — admission decisions, payments, results,
+course registration approvals, clearance updates, document issuance,
+announcements) — only the registration-opened one silently never does.
+
 ## Setup (run this on a machine with PHP 8.3+ and Composer)
 
 ```bash

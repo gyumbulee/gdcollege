@@ -18,15 +18,19 @@ use Illuminate\Support\Str;
  * change this service's interface, only what it does in addition to the
  * in-app row.
  *
- * Wired into three of §25's eight listed trigger events so far —
- * admission decision, result published, payment confirmed — not all
- * eight. The remaining five (course registration opened/approved,
- * clearance update, document ready, important announcement) follow the
- * exact same one-line `$dispatcher->toUser(...)` pattern at their own
- * existing "this just happened" point in the code; adding them is
- * mechanical, not a new capability, and is called out explicitly as a
- * remaining gap in docs/PROJECT_STATUS.md rather than silently left
- * for someone to notice missing.
+ * All eight of §25's listed trigger events are wired: admission decision
+ * (StaffApplicationController), payment confirmed (PaymentVerificationService,
+ * both invoice and application-fee paths), result published
+ * (StaffResultReviewController), course registration approved/returned
+ * (StaffCourseRegistrationController), clearance stage updated
+ * (ClearanceService), document ready (DocumentIssuanceService — one
+ * choke point covers every document type), announcement published
+ * (AnnouncementController -> fanOutAnnouncement() below), and course
+ * registration opened — the one genuinely date-driven trigger, fired by
+ * a scheduled command rather than inside a request; see
+ * App\Console\Commands\NotifyRegistrationOpened and backend/README.md's
+ * "Scheduled tasks" section for the real cron requirement that makes it
+ * actually run.
  */
 class NotificationDispatcher
 {

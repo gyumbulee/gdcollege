@@ -62,7 +62,15 @@ class StudentController extends Controller
      */
     public function updateStatus(UpdateStudentStatusRequest $request, Student $student, AuditLogger $audit)
     {
-        if ($request->string('status') === Student::STATUS_GRADUATED) {
+        // $request->string() returns a Stringable, not a plain string —
+        // comparing it with === against a string constant is always
+        // false (different types). Found this while adding graduated_at
+        // below: the clearance gate right here had the same bug and was
+        // silently never enforced — an admin could set GRADUATED with no
+        // completed clearance at all, the check just never fired.
+        $newStatus = $request->input('status');
+
+        if ($newStatus === Student::STATUS_GRADUATED) {
             $cleared = ClearanceRequest::where('student_id', $student->id)
                 ->where('status', ClearanceRequest::STATUS_COMPLETED)
                 ->exists();
@@ -73,7 +81,20 @@ class StudentController extends Controller
         }
 
         $old = $student->status;
-        $student->update(['status' => $request->string('status')]);
+        $student->update([
+            'status' => $newStatus,
+            // Set the moment this transition actually happens (not
+            // backdated, not the clearance-completion date) when moving
+            // TO graduated; cleared if a status is later corrected away
+            // from GRADUATED, so graduated_at never lingers on a
+            // student who technically isn't graduated anymore — see
+            // ManagementDashboardController::graduationStats().
+            'graduated_at' => match (true) {
+                $newStatus === Student::STATUS_GRADUATED => now(),
+                (string) $old === Student::STATUS_GRADUATED => null,
+                default => $student->graduated_at,
+            },
+        ]);
 
         $audit->log(
             'student.status.changed',

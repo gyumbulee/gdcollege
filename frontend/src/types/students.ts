@@ -2,6 +2,7 @@ export type Student = {
   id: number;
   matric_number: string;
   status: "ACTIVE" | "DEFERRED" | "SUSPENDED" | "WITHDRAWN" | "EXPELLED" | "GRADUATED";
+  graduated_at: string | null;
   user: { name: string; email: string; phone: string | null };
   programme: {
     id: number;

@@ -26,6 +26,7 @@ class DocumentIssuanceService
     public function __construct(
         private readonly DocumentNumberGenerator $numbers,
         private readonly VerificationCodeGenerator $codes,
+        private readonly NotificationDispatcher $notifications,
     ) {
     }
 
@@ -144,7 +145,7 @@ class DocumentIssuanceService
 
     private function issue(Student $student, string $type, array $content, ?User $issuer, ?DocumentRequest $request = null): IssuedDocument
     {
-        return DB::transaction(fn () => IssuedDocument::create([
+        $document = DB::transaction(fn () => IssuedDocument::create([
             'document_number' => $this->numbers->generate($type),
             'verification_code' => $this->codes->generate(),
             'type' => $type,
@@ -155,5 +156,17 @@ class DocumentIssuanceService
             'status' => IssuedDocument::STATUS_ACTIVE,
             'content' => $content,
         ]));
+
+        $label = ucfirst(strtolower(str_replace('_', ' ', $type)));
+
+        $this->notifications->toUser(
+            $student->user_id,
+            'documents.ready',
+            "{$label} ready",
+            "Your {$label} is ready to download.",
+            '/student/documents'
+        );
+
+        return $document;
     }
 }

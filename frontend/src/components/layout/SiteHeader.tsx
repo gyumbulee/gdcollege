@@ -37,7 +37,9 @@ export async function SiteHeader() {
         <div className="hidden items-center gap-2 md:flex">
           {session ? (
             <>
-              <span className="mr-1 text-sm text-muted">{session.name}</span>
+              <Link href="/account" className="mr-1 text-sm text-muted hover:text-sky-dark hover:underline">
+                {session.name}
+              </Link>
               <Button href="/portal" variant="ghost">
                 My Portal
               </Button>

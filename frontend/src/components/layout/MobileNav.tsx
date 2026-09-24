@@ -66,6 +66,9 @@ export function MobileNav({
                 <Button href="/portal" variant="ghost" onClick={() => setOpen(false)}>
                   My Portal
                 </Button>
+                <Button href="/account" variant="ghost" onClick={() => setOpen(false)}>
+                  My Account
+                </Button>
                 <Button variant="secondary" onClick={handleSignOut} aria-disabled={signingOut}>
                   {signingOut ? "Signing out…" : "Sign out"}
                 </Button>

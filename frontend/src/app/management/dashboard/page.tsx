@@ -157,6 +157,8 @@ export default async function ManagementDashboardPage({
           </div>
 
           <BreakdownCard title="Applications by session" counts={body.data.admissions.admissions_trend_by_session} />
+
+          <BreakdownCard title="Graduation trend (by month)" counts={body.data.graduation.trend} />
         </>
       )}
     </div>

@@ -196,17 +196,24 @@ class ManagementDashboardController extends Controller
     }
 
     /**
-     * Snapshot only — see GpaCalculationService's docblock and
-     * docs/PROJECT_STATUS.md: no graduation date/session is recorded
-     * anywhere yet (Student has a GRADUATED status but no `graduated_at`
-     * or a graduation-session link), so a time trend isn't derivable.
-     * That belongs to the not-yet-built Graduation-processing feature
-     * (spec §16, distinct from the Clearance workflow Phase 11 built).
+     * `graduated_at` is set the moment a student's status actually
+     * changes to GRADUATED (see StudentController::updateStatus()) —
+     * this trend is real, not backdated or inferred from a session link.
      */
     private function graduationStats(array $filters): array
     {
+        $graduated = (clone $this->scopedStudents($filters))->where('status', Student::STATUS_GRADUATED);
+
+        $byMonth = (clone $graduated)
+            ->whereNotNull('graduated_at')
+            ->selectRaw("DATE_FORMAT(graduated_at, '%Y-%m') as month, count(*) as total")
+            ->groupBy('month')
+            ->orderBy('month')
+            ->pluck('total', 'month');
+
         return [
-            'total_graduated' => (clone $this->scopedStudents($filters))->where('status', Student::STATUS_GRADUATED)->count(),
+            'total_graduated' => $graduated->count(),
+            'trend' => $byMonth,
         ];
     }
 }

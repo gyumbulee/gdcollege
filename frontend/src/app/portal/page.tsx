@@ -6,7 +6,7 @@ import {
   Users, ClipboardCheck, ListChecks, BookOpen, BarChart3, Award,
   Building2, Wallet, FileText, CheckCircle2, Briefcase, LifeBuoy,
   ClipboardList, Landmark, Archive, LineChart, ShieldCheck, Search,
-  CheckSquare, Bell, LayoutGrid,
+  CheckSquare, Bell, LayoutGrid, UserCog,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { requireSession, can, getSessionToken } from "@/lib/auth/session";
@@ -110,6 +110,10 @@ export default async function PortalPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/account" className="inline-flex items-center gap-1.5 text-sm text-sky-dark hover:underline">
+            <UserCog size={16} aria-hidden />
+            My Account
+          </Link>
           <Link href="/notifications" className="inline-flex items-center gap-1.5 text-sm text-sky-dark hover:underline">
             <Bell size={16} aria-hidden />
             Notifications{unreadCount > 0 ? ` (${unreadCount})` : ""}
