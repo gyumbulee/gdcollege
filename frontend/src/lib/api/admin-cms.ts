@@ -6,7 +6,7 @@ export type AdminPost = { id: number; slug: string; title: string; excerpt: stri
 export type AdminEvent = { id: number; slug: string; title: string; description: string | null; starts_at: string; ends_at: string | null; location: string | null; status: string; cover_image_url: string | null };
 export type AdminFaq = { id: number; question: string; answer: string; category: string | null; sort_order: number };
 export type AdminDownload = { id: number; title: string; category: string | null; original_filename: string; file_url: string | null };
-export type AdminGallery = { id: number; slug: string; title: string; description: string | null; status: string; items_count?: number };
+export type AdminGallery = { id: number; slug: string; title: string; description: string | null; status: string; type: string; items_count?: number };
 export type AdminAnnouncement = { id: number; title: string; content: string; audience_type: string; audience_id: number | null; status: string; publish_at: string | null };
 
 export function getAdminPages(token: string) {

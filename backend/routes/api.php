@@ -163,6 +163,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/events', [EventController::class, 'publicIndex']);
     Route::get('/events/{slug}', [EventController::class, 'publicShow']);
     Route::get('/galleries', [GalleryController::class, 'publicIndex']);
+    Route::get('/featured-gallery', [GalleryController::class, 'publicFeatured']);
     Route::get('/galleries/{slug}', [GalleryController::class, 'publicShow']);
     Route::get('/downloads', [DownloadController::class, 'publicIndex']);
     Route::get('/faqs', [FaqController::class, 'publicIndex']);

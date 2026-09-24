@@ -10,7 +10,11 @@ class Gallery extends Model
     public const STATUS_DRAFT = 'DRAFT';
     public const STATUS_PUBLISHED = 'PUBLISHED';
 
-    protected $fillable = ['slug', 'title', 'description', 'status'];
+    /** STANDARD galleries list publicly at /gallery. FEATURED is the single, admin-curated homepage carousel — see the 2026_09_24 migration. */
+    public const TYPE_STANDARD = 'STANDARD';
+    public const TYPE_FEATURED = 'FEATURED';
+
+    protected $fillable = ['slug', 'title', 'description', 'status', 'type'];
 
     public function items(): HasMany
     {

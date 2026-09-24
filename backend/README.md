@@ -405,3 +405,4 @@ curl http://localhost:8000/api/v1/student/results -H "Authorization: Bearer <stu
 Result Correction & Academic Progression — see `../docs/PROJECT_STATUS.md`
 for full detail, including what a fresh session should do first (run the
 above against a real Laravel instance, not just the verification stub).
+ 

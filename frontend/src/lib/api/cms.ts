@@ -26,6 +26,7 @@ export type PublicGallery = {
   slug: string;
   title: string;
   description: string | null;
+  type?: string;
   items?: { id: number; image_url: string; caption: string | null }[];
 };
 
@@ -90,6 +91,16 @@ export function getGalleries() {
 
 export function getGallery(slug: string) {
   return fetchOne<PublicGallery>(`/galleries/${slug}`);
+}
+
+/**
+ * The single admin-curated "Homepage Carousel" gallery (Gallery::TYPE_FEATURED) —
+ * deliberately not part of the public /gallery listing. A missing/unpublished
+ * featured gallery is a normal state (fetchOne resolves it to item: null), not
+ * an error — the homepage falls back to a placeholder carousel slide.
+ */
+export function getFeaturedGallery() {
+  return fetchOne<PublicGallery>("/featured-gallery");
 }
 
 export function getDownloads() {

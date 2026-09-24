@@ -18,6 +18,7 @@ class GalleryRequest extends FormRequest
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
             'status' => ['sometimes', 'in:DRAFT,PUBLISHED'],
+            'type' => ['sometimes', 'in:STANDARD,FEATURED'],
         ];
     }
 }

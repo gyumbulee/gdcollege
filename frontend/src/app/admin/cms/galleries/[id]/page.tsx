@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireSession, can, getSessionToken } from "@/lib/auth/session";
 import { getAdminGallery } from "@/lib/api/admin-cms";
 import { Container } from "@/components/ui/Container";
+import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AddGalleryItemForm } from "@/components/cms/AddGalleryItemForm";
 import { CmsActionButton } from "@/components/cms/CmsActionButton";
@@ -30,7 +31,13 @@ export default async function AdminCmsGalleryDetailPage({
     <Container className="flex flex-col gap-6 py-12">
       <div>
         <p className="text-sm text-muted">System Administration · CMS · Gallery</p>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl text-ink">{body.data.title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl text-ink">{body.data.title}</h1>
+          {body.data.type === "FEATURED" && <Badge tone="amber">Homepage carousel</Badge>}
+        </div>
+        {body.data.type === "FEATURED" && (
+          <p className="mt-1 text-sm text-muted">Photos added here appear in the homepage carousel, in order. Not shown on the public /gallery page.</p>
+        )}
       </div>
 
       <AddGalleryItemForm galleryId={body.data.id} />

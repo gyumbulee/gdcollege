@@ -1614,3 +1614,78 @@ command + cron requirement, and closing the graduation gap surfaced a
 genuine pre-existing bug in the clearance-gate check). No small gaps
 currently tracked; the next thing to look for is whatever turns up once
 real execution (step 1 above) actually happens.
+
+## Homepage featured carousel & daily banner popup (2026-09-24)
+
+Abee asked for: homepage sections to consume real data with honest
+placeholders (already the established pattern — see below for the one
+gap that wasn't yet covered), a new admin-curated "Homepage Carousel"
+gallery that is separate from the public `/gallery` listing, single
+(only one can exist), created via a form and editable, plus the
+existing institution banner to pop up once per day.
+
+- **Gallery type split**: new `type` column on `galleries`
+  (`STANDARD` / `FEATURED`, migration
+  `2026_09_24_000001_add_type_to_galleries_table.php`). `publicIndex()`/
+  `publicShow()` now filter to `STANDARD` only — the featured album never
+  appears on the public gallery page. New `publicFeatured()` +
+  `GET /featured-gallery` route is the homepage's data source.
+  `store()`/`update()` reject creating a second `FEATURED` gallery
+  (422, "already exists — edit that one instead"), enforced at the
+  application layer since a portable "at most one row where type = X"
+  unique index isn't practical here.
+- **Admin UI** (`/admin/cms/galleries`): `CreateGalleryForm` gained a
+  Standard vs. Homepage-carousel radio, with the carousel option
+  disabled once one exists. The listing page now splits into a
+  "Homepage carousel" section and a "Public gallery albums" section, with
+  an amber badge on the featured one. The existing add/remove-photo
+  detail page (`/admin/cms/galleries/[id]`) needed no changes — it
+  already covers "editable" for either type.
+- **Homepage**: new `FeaturedCarousel` (server, fetches `/featured-gallery`)
+  + `FeaturedCarouselClient` (client — autoplay every 6s, prev/next
+  arrows, dot indicators). Falls back to a clearly-labelled "Sample"
+  placeholder slide when no featured gallery is configured/published or
+  has zero photos — same real-data-with-placeholder convention as
+  `ProgrammesPreview`.
+- **Daily banner popup**: found that `Institution::banner_path` (uploadable
+  since Phase 21's Institution Settings) was never actually displayed
+  anywhere on the site — closed that gap. New `BannerPopup` (server,
+  reads `getInstitutionData()`) + `BannerPopupClient` (client modal).
+  Shows once per calendar date via a `localStorage` key
+  (`gdcollege_banner_shown_on`, compared against `toISOString().slice(0,10)`
+  so it naturally resets at local midnight); renders nothing at all if no
+  banner has been uploaded — never fabricates one. Dismiss via the ✕
+  button, clicking the backdrop, or Escape.
+- **Audited the rest of the homepage** against "real data, placeholder if
+  none" per Abee's request: Hero, JourneyStrip, ProgrammesPreview, and
+  NoticeBoard already followed this pattern from earlier phases — no
+  changes needed there. The banner popup was the one real gap found.
+- **Verified live**: built a throwaway Python stub server (same convention
+  as prior sessions, not committed) covering `/institution`,
+  `/programmes`, `/announcements`, `/featured-gallery`, ran a real
+  `next build` (clean, no TS errors) and `next start` against it, and
+  curled the homepage in three states — featured gallery with 3 photos
+  (carousel + captions rendered correctly in the actual server HTML),
+  featured gallery configured but empty, and no featured gallery at all
+  (both correctly fell back to the placeholder slide) — and with
+  `banner_url` present vs. `null` (popup component present vs. absent
+  from output; note the popup itself only appears client-side after
+  mount, by design, so it's expected to be absent from a raw HTML curl
+  either way — what was verified is that `BannerPopup` returns `null`
+  server-side when there's no banner, so no dead markup ships). `eslint`
+  clean on all new/changed files (one real finding along the way: the
+  daily-popup effect tripped `react-hooks/set-state-in-effect` — a
+  lazy-`useState` initializer would've read `localStorage` during the
+  client's first render and mismatched the server-rendered HTML, so this
+  is a deliberate, commented exception rather than a lint-suppression
+  reflex).
+- **Not done**: backend changes (migration, model, controller, routes)
+  are hand-traced only — no PHP/Composer in this sandbox, same standing
+  constraint as every other phase; queued alongside Phases 14/21/22/17-18
+  for real execution. No reordering UI for carousel photos — order
+  follows upload sequence via existing `sort_order`, same limitation as
+  every other gallery.
+- Delivered as `gdcollege-phase-featured-carousel-banner-popup.zip`
+  (15 files, delta only); verified `git diff HEAD --stat` empty after
+  committing, before packaging.
+

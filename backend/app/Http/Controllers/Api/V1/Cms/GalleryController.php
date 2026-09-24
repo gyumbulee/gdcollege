@@ -17,17 +17,42 @@ class GalleryController extends Controller
 {
     use ApiResponse, GeneratesUniqueSlug, UsesUploadsDisk;
 
+    /** Excludes the FEATURED homepage carousel — that album is never listed in the public gallery, only surfaced via publicFeatured() on the homepage. */
     public function publicIndex()
     {
-        return $this->success(Gallery::where('status', Gallery::STATUS_PUBLISHED)->orderByDesc('created_at')->get());
+        return $this->success(
+            Gallery::where('status', Gallery::STATUS_PUBLISHED)
+                ->where('type', Gallery::TYPE_STANDARD)
+                ->orderByDesc('created_at')
+                ->get()
+        );
     }
 
     public function publicShow(string $slug)
     {
-        $gallery = Gallery::where('slug', $slug)->where('status', Gallery::STATUS_PUBLISHED)->with('items')->first();
+        $gallery = Gallery::where('slug', $slug)
+            ->where('status', Gallery::STATUS_PUBLISHED)
+            ->where('type', Gallery::TYPE_STANDARD)
+            ->with('items')
+            ->first();
 
         if (! $gallery) {
             return $this->fail('Gallery not found.', [], 404);
+        }
+
+        return $this->success($gallery);
+    }
+
+    /** The homepage carousel's data source — the single published FEATURED gallery, with its items. Not found is a normal, expected state (no carousel configured yet), not an error. */
+    public function publicFeatured()
+    {
+        $gallery = Gallery::where('status', Gallery::STATUS_PUBLISHED)
+            ->where('type', Gallery::TYPE_FEATURED)
+            ->with('items')
+            ->first();
+
+        if (! $gallery) {
+            return $this->fail('No featured gallery configured.', [], 404);
         }
 
         return $this->success($gallery);
@@ -45,23 +70,42 @@ class GalleryController extends Controller
 
     public function store(GalleryRequest $request, AuditLogger $audit)
     {
+        $data = $request->validated();
+
+        if (($data['type'] ?? Gallery::TYPE_STANDARD) === Gallery::TYPE_FEATURED && $this->featuredExists()) {
+            return $this->fail('A homepage carousel gallery already exists. Edit that one instead of creating a second.', [], 422);
+        }
+
         $gallery = Gallery::create([
-            ...$request->validated(),
+            ...$data,
             'slug' => $this->uniqueSlug(Gallery::class, $request->string('title')),
         ]);
 
-        $audit->log('cms.galleries.create', $gallery, null, $gallery->only(['title']));
+        $audit->log('cms.galleries.create', $gallery, null, $gallery->only(['title', 'type']));
 
         return $this->success($gallery, 'Gallery created.', 201);
     }
 
     public function update(GalleryRequest $request, Gallery $gallery, AuditLogger $audit)
     {
-        $old = $gallery->only(['title', 'status']);
-        $gallery->update($request->validated());
-        $audit->log('cms.galleries.update', $gallery, $old, $gallery->only(['title', 'status']));
+        $data = $request->validated();
+
+        if (($data['type'] ?? $gallery->type) === Gallery::TYPE_FEATURED && $this->featuredExists($gallery->id)) {
+            return $this->fail('A homepage carousel gallery already exists. Edit that one instead of creating a second.', [], 422);
+        }
+
+        $old = $gallery->only(['title', 'status', 'type']);
+        $gallery->update($data);
+        $audit->log('cms.galleries.update', $gallery, $old, $gallery->only(['title', 'status', 'type']));
 
         return $this->success($gallery, 'Gallery updated.');
+    }
+
+    private function featuredExists(?int $excludingId = null): bool
+    {
+        return Gallery::where('type', Gallery::TYPE_FEATURED)
+            ->when($excludingId, fn ($q) => $q->where('id', '!=', $excludingId))
+            ->exists();
     }
 
     public function destroy(Gallery $gallery, AuditLogger $audit)
